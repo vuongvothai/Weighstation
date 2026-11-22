@@ -50,3 +50,89 @@
 - [x] `POST /config` — đổi cổng COM / baud rate
 - [x] CORS cho `http://localhost:5173`
 - [x] Xử lý `serial.SerialException` → trả `connected=false`, không crash
+
+---
+
+## Ghi chú triển khai
+
+### Cấu trúc file đã thêm
+
+| Thành phần | File |
+|---|---|
+| BE entity | `backend/vuong/src/main/java/com/vuong/vo/entity/WeighRecord.java` |
+| BE repository | `backend/vuong/src/main/java/com/vuong/vo/repository/WeighRecordRepository.java` |
+| BE service | `backend/vuong/src/main/java/com/vuong/vo/service/TicketService.java` |
+| BE controller | `backend/vuong/src/main/java/com/vuong/vo/controller/TicketController.java` |
+| BE CORS + lỗi | `backend/vuong/src/main/java/com/vuong/vo/config/CorsConfig.java`, `ApiExceptionHandler.java` |
+| FE hooks | `frontend-react/src/hooks/useScaleWeight.js`, `useTicketDraft.js` |
+| FE API client | `frontend-react/src/api/tickets.js` |
+| FE màn hình cân | `frontend-react/src/pages/WeighScreen.jsx` |
+| FE in phiếu | `frontend-react/src/pages/PrintTicket.jsx` + `PrintTicket.css` |
+| Agent | `scale_agent.py` |
+
+### Quyết định trong lúc triển khai
+
+| Hạng mục | Chốt |
+|---|---|
+| Tên entity | `WeighRecord` (roadmap ghi `WeighStation`, nhưng bảng là `weigh_record` và mỗi bản ghi là **một lần cân**, không phải một trạm) |
+| `ticket_code` | `CF-0001`, tăng theo `COUNT(*) + 1`. Mã chỉ để in trên giấy; khóa nghiệp vụ là `ticketUuid` |
+| `created_at` / `updated_at` | Set bằng `@PrePersist` / `@PreUpdate` thay vì dựa vào `DEFAULT CURRENT_TIMESTAMP` của MySQL, để H2 test cũng chạy được |
+| Test BE | Dùng H2 (`MODE=MySQL`) qua profile `test`, không cần MySQL khi chạy `mvnw test` |
+| Test FE | Vitest + Testing Library (jsdom) |
+| Test Agent | pytest + `TestClient`, thay `ScaleReader` bằng stub để không cần cổng COM |
+| `POST /config` | Nhận cả `baudRate` (contract) và `baud_rate` (tên Python) qua alias của Pydantic |
+
+### Cách chạy thử
+
+**1. MySQL** (docker-compose hoặc MySQL local):
+
+```bash
+docker compose up -d mysql
+```
+
+**2. Backend** (cần `application-local.properties` với credentials MySQL):
+
+```bash
+cd backend/vuong
+./mvnw.cmd spring-boot:run
+```
+
+**3. Agent** (bỏ qua nếu chưa có cân thật — FE sẽ báo ⚫ mất kết nối):
+
+```bash
+python -m venv scale-agent/venv
+scale-agent/venv/Scripts/python -m pip install -r requirements.txt
+scale-agent/venv/Scripts/python scale_agent.py
+```
+
+**4. Frontend**:
+
+```bash
+cd frontend-react
+npm install
+npm run dev
+```
+
+Mở `http://localhost:5173/tram-can`.
+
+### Lệnh kiểm thử
+
+| Thành phần | Lệnh | Kết quả |
+|---|---|---|
+| Backend | `cd backend/vuong && ./mvnw.cmd test` | 24 test pass |
+| Frontend | `cd frontend-react && npm test` | 35 test pass |
+| Frontend lint | `cd frontend-react && npm run lint` | sạch |
+| Agent | `scale-agent/venv/Scripts/python -m pytest tests -q` | 19 test pass |
+
+### Biến môi trường FE
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `VITE_AGENT_BASE_URL` | `http://127.0.0.1:5000` | URL agent |
+| `VITE_API_BASE_URL` | `http://localhost:8080` | URL BE; để trống khi chạy qua nginx |
+
+### Ngoài phạm vi MVP (đã chốt trong `01-architecture.md`)
+
+- Không có xác thực — máy trạm không nối Internet.
+- Không có app chính / tầng đồng bộ — `sync_status` chưa cần.
+- Chưa có audit log cho `PUT` (xem ghi chú trong `03-api-contract.md`).
