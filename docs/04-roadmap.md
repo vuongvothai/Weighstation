@@ -30,10 +30,10 @@
 - [x] Nút "In phiếu" → điều hướng sang `/in-phieu/:ticketUuid`
 
 ### Module: In phiếu
-- [ ] Tạo `src/pages/PrintTicket.jsx` — chuyển mẫu HTML trong `agent.md` thành JSX
-- [ ] Giữ nguyên `@page { size: A4 portrait; margin: 3mm }` và `.receipt { width: 70mm }`
-- [ ] Dữ liệu lấy từ `GET /api/tickets/{ticketUuid}`
-- [ ] Ẩn nút "In" khi `@media print`
+- [x] Tạo `src/pages/PrintTicket.jsx` — chuyển mẫu HTML trong `agent.md` thành JSX
+- [x] Giữ nguyên `@page { size: A4 portrait; margin: 3mm }` và `.receipt { width: 70mm }`
+- [x] Dữ liệu lấy từ `GET /api/tickets/{ticketUuid}`
+- [x] Ẩn nút "In" khi `@media print`
 
 ## Agent
 
