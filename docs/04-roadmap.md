@@ -7,9 +7,9 @@
 - [x] Tạo `WeighStationRepository` — `findByTicketUuidOrderByWeighSequenceAsc`, `existsByTicketUuid`
 
 ### Module: Service
-- [ ] `TicketService` — sinh `ticket_code` (`CF-0001`...), validate `weightKg > 0`, `bagCount >= 1`
-- [ ] Tính `totalBags`, `totalWeightKg` từ mảng records
-- [ ] Xử lý `409` khi `ticketUuid` đã tồn tại
+- [x] `TicketService` — sinh `ticket_code` (`CF-0001`...), validate `weightKg > 0`, `bagCount >= 1`
+- [x] Tính `totalBags`, `totalWeightKg` từ mảng records
+- [x] Xử lý `409` khi `ticketUuid` đã tồn tại
 
 ### Module: Controller
 - [ ] `TicketController` — 4 endpoint theo [03-api-contract.md](./03-api-contract.md)
