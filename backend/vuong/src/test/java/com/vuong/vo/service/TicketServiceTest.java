@@ -33,7 +33,7 @@ class TicketServiceTest {
 	private TicketCreateRequest sampleRequest(String uuid) {
 		return new TicketCreateRequest(
 				uuid,
-				"Anh Ba (Buôn Trấp)",
+				"Nguyen Van A",
 				List.of(
 						new WeighRecordRequest(1, 2, new BigDecimal("124.50"), T1),
 						new WeighRecordRequest(2, 2, new BigDecimal("126.00"), T2),
@@ -88,7 +88,7 @@ class TicketServiceTest {
 		TicketResponse updated = service.replaceTicket(
 				uuid,
 				new TicketUpdateRequest(
-						"Anh Ba (Buôn Trấp)",
+						"Nguyen Van A",
 						List.of(
 								new WeighRecordRequest(1, 2, new BigDecimal("124.50"), T1),
 								new WeighRecordRequest(2, 1, new BigDecimal("126.00"), T2))));

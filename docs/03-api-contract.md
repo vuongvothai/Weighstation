@@ -60,7 +60,7 @@ Ghi **một phiếu cân hoàn chỉnh** (nhiều lần cân) vào DB. FE gọi 
 ```json
 {
   "ticketUuid": "550e8400-e29b-41d4-a716-446655440000",
-  "customerName": "Anh Ba (Buôn Trấp)",
+  "customerName": "Nguyen Van A",
   "records": [
     { "weighSequence": 1, "bagCount": 2, "weightKg": 124.50, "weighedAt": "2026-11-21T19:55:12+07:00" },
     { "weighSequence": 2, "bagCount": 2, "weightKg": 126.00, "weighedAt": "2026-11-21T19:56:30+07:00" },
@@ -86,7 +86,7 @@ Ghi **một phiếu cân hoàn chỉnh** (nhiều lần cân) vào DB. FE gọi 
   "id": 42,
   "ticketUuid": "550e8400-e29b-41d4-a716-446655440000",
   "ticketCode": "CF-0042",
-  "customerName": "Anh Ba (Buôn Trấp)",
+  "customerName": "Nguyen Van A",
   "records": [
     { "weighSequence": 1, "bagCount": 2, "weightKg": 124.50, "weighedAt": "2026-11-21T19:55:12+07:00" },
     { "weighSequence": 2, "bagCount": 2, "weightKg": 126.00, "weighedAt": "2026-11-21T19:56:30+07:00" },
@@ -119,6 +119,32 @@ Ghi **một phiếu cân hoàn chỉnh** (nhiều lần cân) vào DB. FE gọi 
 }
 ```
 
+### `GET /api/tickets`
+
+Lấy danh sách phiếu đã lưu — FE dùng cho màn hình **Lịch sử**. Mỗi phiếu 1 dòng, mới nhất trước.
+
+**Response `200 OK`:**
+
+```json
+[
+  {
+    "ticketUuid": "550e8400-e29b-41d4-a716-446655440000",
+    "ticketCode": "CF-0042",
+    "customerName": "Nguyen Van A",
+    "weighedAt": "2026-11-21T19:58:50"
+  }
+]
+```
+
+| Trường | Kiểu | Ghi chú |
+|---|---|---|
+| `ticketUuid` | string | Dùng để mở `/in-phieu/{ticketUuid}` |
+| `ticketCode` | string | Mã in trên giấy |
+| `customerName` | string | Tên khách |
+| `weighedAt` | ISO-8601 | Giờ lần cân **cuối cùng** của phiếu |
+
+Danh sách rỗng nếu chưa có phiếu nào. Endpoint không trả `records` — FE gọi `GET /api/tickets/{ticketUuid}` khi cần chi tiết.
+
 ### `GET /api/tickets/{ticketUuid}`
 
 Lấy toàn bộ lần cân của 1 phiếu — FE dùng để render lại khi mở lại tab hoặc in lại.
@@ -129,7 +155,7 @@ Lấy toàn bộ lần cân của 1 phiếu — FE dùng để render lại khi 
 {
   "ticketUuid": "550e8400-e29b-41d4-a716-446655440000",
   "ticketCode": "CF-0042",
-  "customerName": "Anh Ba (Buôn Trấp)",
+  "customerName": "Nguyen Van A",
   "records": [
     { "weighSequence": 1, "bagCount": 2, "weightKg": 124.50, "weighedAt": "2026-11-21T19:55:12+07:00" },
     { "weighSequence": 2, "bagCount": 2, "weightKg": 126.00, "weighedAt": "2026-11-21T19:56:30+07:00" },
@@ -151,7 +177,7 @@ Ghi đè toàn bộ phiếu (dùng cho nút **Sửa phiếu** trên FE — sửa
 
 ```json
 {
-  "customerName": "Anh Ba (Buôn Trấp)",
+  "customerName": "Nguyen Van A",
   "records": [
     { "weighSequence": 1, "bagCount": 2, "weightKg": 124.50, "weighedAt": "2026-11-21T19:55:12+07:00" },
     { "weighSequence": 2, "bagCount": 1, "weightKg": 126.00, "weighedAt": "2026-11-21T19:56:30+07:00" },
@@ -178,6 +204,7 @@ Xóa toàn bộ phiếu (dùng khi muốn làm lại từ đầu).
 | Agent | GET | `/weight` |
 | Agent | POST | `/config` |
 | BE | POST | `/api/tickets` |
+| BE | GET | `/api/tickets` |
 | BE | GET | `/api/tickets/{ticketUuid}` |
 | BE | PUT | `/api/tickets/{ticketUuid}` |
 | BE | DELETE | `/api/tickets/{ticketUuid}` |

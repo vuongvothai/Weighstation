@@ -26,7 +26,7 @@ class WeighRecordRepositoryTest {
 		return new WeighRecord(
 				ticketUuid,
 				ticketCode,
-				"Anh Ba (Buôn Trấp)",
+				"Nguyen Van A",
 				sequence,
 				2,
 				new BigDecimal(weight),

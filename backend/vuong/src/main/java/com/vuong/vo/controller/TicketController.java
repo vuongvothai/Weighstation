@@ -1,6 +1,7 @@
 package com.vuong.vo.controller;
 
 import java.net.URI;
+import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.vuong.vo.dto.TicketCreateRequest;
 import com.vuong.vo.dto.TicketResponse;
+import com.vuong.vo.dto.TicketSummaryResponse;
 import com.vuong.vo.dto.TicketUpdateRequest;
 import com.vuong.vo.service.TicketService;
 
@@ -38,6 +40,11 @@ public class TicketController {
 		return ResponseEntity
 				.created(URI.create("/api/tickets/" + created.ticketUuid()))
 				.body(created);
+	}
+
+	@GetMapping
+	public List<TicketSummaryResponse> list() {
+		return service.listTickets();
 	}
 
 	@GetMapping("/{ticketUuid}")

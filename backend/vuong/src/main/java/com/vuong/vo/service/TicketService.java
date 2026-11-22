@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.vuong.vo.dto.TicketCreateRequest;
 import com.vuong.vo.dto.TicketResponse;
+import com.vuong.vo.dto.TicketSummaryResponse;
 import com.vuong.vo.dto.TicketUpdateRequest;
 import com.vuong.vo.dto.WeighRecordRequest;
 import com.vuong.vo.dto.WeighRecordResponse;
@@ -52,6 +53,16 @@ public class TicketService {
 				toEntities(ticketUuid, ticketCode, request.customerName(), request.records()));
 
 		return toResponse(saved.get(0).getId(), ticketUuid, ticketCode, request.customerName(), saved);
+	}
+
+	/**
+	 * Danh sách phiếu cân cho màn hình lịch sử — mỗi phiếu 1 dòng, mới nhất trước.
+	 *
+	 * @return danh sách rỗng nếu chưa có phiếu nào
+	 */
+	@Transactional(readOnly = true)
+	public List<TicketSummaryResponse> listTickets() {
+		return repository.findAllSummaries();
 	}
 
 	/**

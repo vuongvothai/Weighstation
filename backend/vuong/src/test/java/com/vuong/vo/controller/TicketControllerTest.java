@@ -44,7 +44,7 @@ class TicketControllerTest {
 	private TicketCreateRequest sample(String uuid) {
 		return new TicketCreateRequest(
 				uuid,
-				"Anh Ba (Buôn Trấp)",
+				"Nguyen Van A",
 				List.of(
 						new WeighRecordRequest(1, 2, new BigDecimal("124.50"), T1),
 						new WeighRecordRequest(2, 2, new BigDecimal("126.00"), T2)));
@@ -119,6 +119,38 @@ class TicketControllerTest {
 				.andExpect(jsonPath("$.records.length()").value(2))
 				.andExpect(jsonPath("$.records[0].weighSequence").value(1))
 				.andExpect(jsonPath("$.totalWeightKg").value(250.50));
+	}
+
+	@Test
+	void get_tickets_returns_history_summaries_newest_first() throws Exception {
+		String recent = "aaaaaaaa-0000-4000-8000-000000000011";
+		String old = "aaaaaaaa-0000-4000-8000-000000000012";
+
+		mvc.perform(post("/api/tickets").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(sample(recent))))
+				.andExpect(status().isCreated());
+
+		mvc.perform(post("/api/tickets").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(
+				new TicketCreateRequest(
+						old,
+						"Khach B",
+						List.of(new WeighRecordRequest(1, 1, new BigDecimal("58.50"), T1))))))
+				.andExpect(status().isCreated());
+
+		mvc.perform(get("/api/tickets"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].ticketUuid").value(recent))
+				.andExpect(jsonPath("$[0].customerName").value("Nguyen Van A"))
+				.andExpect(jsonPath("$[0].ticketCode").value(org.hamcrest.Matchers.startsWith("CF-")))
+				.andExpect(jsonPath("$[0].weighedAt").exists())
+				.andExpect(jsonPath("$[1].ticketUuid").value(old));
+	}
+
+	@Test
+	void get_tickets_on_empty_db_returns_empty_list() throws Exception {
+		mvc.perform(get("/api/tickets"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(0));
 	}
 
 	@Test
