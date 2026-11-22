@@ -15,5 +15,5 @@ import jakarta.validation.constraints.Size;
 public record TicketUpdateRequest(
 		@NotBlank(message = "customerName is required")
 		@Size(min = 1, max = 150, message = "customerName must be between 1 and 150 characters") String customerName,
-		@NotEmpty(message = "records must contain at least 1 weigh record") @Valid List<WeighRecordRequest> records) {
+		@NotEmpty(message = "records must contain at least 1 weigh record") List<@Valid WeighRecordRequest> records) {
 }

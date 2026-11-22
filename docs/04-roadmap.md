@@ -12,8 +12,8 @@
 - [x] Xử lý `409` khi `ticketUuid` đã tồn tại
 
 ### Module: Controller
-- [ ] `TicketController` — 4 endpoint theo [03-api-contract.md](./03-api-contract.md)
-- [ ] `config/CorsConfig` — cho phép `http://localhost:5173`
+- [x] `TicketController` — 4 endpoint theo [03-api-contract.md](./03-api-contract.md)
+- [x] `config/CorsConfig` — cho phép `http://localhost:5173`
 
 ## Frontend
 
