@@ -3,8 +3,8 @@
 ## Backend
 
 ### Module: Entity & Repository
-- [ ] Tạo `WeighStation` entity (JPA, map `DECIMAL(10,2)` → `BigDecimal`)
-- [ ] Tạo `WeighStationRepository` — `findByTicketUuidOrderByWeighSequenceAsc`, `existsByTicketUuid`
+- [x] Tạo `WeighStation` entity (JPA, map `DECIMAL(10,2)` → `BigDecimal`)
+- [x] Tạo `WeighStationRepository` — `findByTicketUuidOrderByWeighSequenceAsc`, `existsByTicketUuid`
 
 ### Module: Service
 - [ ] `TicketService` — sinh `ticket_code` (`CF-0001`...), validate `weightKg > 0`, `bagCount >= 1`
