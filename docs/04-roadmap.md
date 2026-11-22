@@ -18,8 +18,8 @@
 ## Frontend
 
 ### Module: Hooks
-- [ ] `useScaleWeight()` — poll `GET /weight` mỗi 100ms, trả `{value, stable, connected}`
-- [ ] `useTicketDraft()` — giữ danh sách lần cân + `ticketUuid` + tên khách; lưu `localStorage`
+- [x] `useScaleWeight()` — poll `GET /weight` mỗi 100ms, trả `{value, stable, connected}`
+- [x] `useTicketDraft()` — giữ danh sách lần cân + `ticketUuid` + tên khách; lưu `localStorage`
 
 ### Module: Màn hình cân
 - [ ] Dọn `App.jsx` template Vite mặc định, thêm route `/tram-can`
