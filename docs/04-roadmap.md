@@ -22,12 +22,12 @@
 - [x] `useTicketDraft()` — giữ danh sách lần cân + `ticketUuid` + tên khách; lưu `localStorage`
 
 ### Module: Màn hình cân
-- [ ] Dọn `App.jsx` template Vite mặc định, thêm route `/tram-can`
-- [ ] Hiển thị số cân realtime + badge trạng thái (🟢/🔴/⚫)
-- [ ] Bắt phím `Space` → ghi 1 lần cân vào state tạm, `preventDefault` để không scroll
-- [ ] Mặc định `bagCount = 2`, cho sửa tại dòng
-- [ ] Nút "Lưu phiếu" → gọi `POST /api/tickets` (batch), nhận `ticketCode`
-- [ ] Nút "In phiếu" → điều hướng sang `/in-phieu/:ticketUuid`
+- [x] Dọn `App.jsx` template Vite mặc định, thêm route `/tram-can`
+- [x] Hiển thị số cân realtime + badge trạng thái (🟢/🔴/⚫)
+- [x] Bắt phím `Space` → ghi 1 lần cân vào state tạm, `preventDefault` để không scroll
+- [x] Mặc định `bagCount = 2`, cho sửa tại dòng
+- [x] Nút "Lưu phiếu" → gọi `POST /api/tickets` (batch), nhận `ticketCode`
+- [x] Nút "In phiếu" → điều hướng sang `/in-phieu/:ticketUuid`
 
 ### Module: In phiếu
 - [ ] Tạo `src/pages/PrintTicket.jsx` — chuyển mẫu HTML trong `agent.md` thành JSX

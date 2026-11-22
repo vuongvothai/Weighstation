@@ -52,12 +52,12 @@ function readStoredDraft() {
  * }}
  */
 export function useTicketDraft() {
-  const [draft, setDraft] = useState(readStoredDraft)
-
-  // Sinh ticketUuid ngay khi mở phiếu để mọi lần cân dùng chung 1 khóa.
-  useEffect(() => {
-    setDraft((prev) => (prev.ticketUuid ? prev : { ...prev, ticketUuid: newTicketUuid() }))
-  }, [])
+  // Sinh ticketUuid ngay trong initializer để mọi lần cân dùng chung 1 khóa,
+  // và draft đã lưu vẫn giữ uuid cũ sau reload.
+  const [draft, setDraft] = useState(() => {
+    const stored = readStoredDraft()
+    return stored.ticketUuid ? stored : { ...stored, ticketUuid: newTicketUuid() }
+  })
 
   useEffect(() => {
     try {

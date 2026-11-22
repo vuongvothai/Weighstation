@@ -69,9 +69,12 @@ export function useScaleStatus() {
  */
 export function useSpaceToWeigh(onCapture, enabled = true, debounceMs = 500) {
   const lastFiredRef = useRef(0)
-
   const handlerRef = useRef(onCapture)
-  handlerRef.current = onCapture
+
+  // Giữ callback mới nhất trong ref để listener không phải remove/add mỗi render.
+  useEffect(() => {
+    handlerRef.current = onCapture
+  }, [onCapture])
 
   useEffect(() => {
     if (!enabled) return undefined
