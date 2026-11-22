@@ -13,7 +13,7 @@ import { fetchTicket } from '../api/tickets'
 const TICKET = {
   ticketUuid: '550e8400-e29b-41d4-a716-446655440000',
   ticketCode: 'CF-0042',
-  customerName: 'Anh Ba (Buôn Trấp)',
+  customerName: 'Nguyen Van A',
   records: [
     { weighSequence: 1, bagCount: 2, weightKg: 124.5, weighedAt: '2026-11-21T19:55:12+07:00' },
     { weighSequence: 2, bagCount: 2, weightKg: 126.0, weighedAt: '2026-11-21T19:56:30+07:00' },
@@ -46,7 +46,7 @@ describe('PrintTicket', () => {
     renderPage()
 
     expect(await screen.findByText('#CF-0042')).toBeTruthy()
-    expect(screen.getByText('Anh Ba (Buôn Trấp)')).toBeTruthy()
+    expect(screen.getAllByText('Nguyen Van A').length).toBeGreaterThan(0)
     expect(screen.getByText('431.8 kg')).toBeTruthy()
     expect(screen.getByText('7 bao')).toBeTruthy()
   })

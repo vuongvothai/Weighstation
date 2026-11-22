@@ -104,6 +104,75 @@ h1 {
   font-size: 0.9rem;
 }
 
+.hint kbd {
+  padding: 2px 6px;
+  color: var(--text);
+  background: #eef0f2;
+  border: 1px solid #d5d9de;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 0.85em;
+}
+
+.manual-entry-bar {
+  margin-top: 14px;
+}
+
+.manual-entry-bar__toggle {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.manual-entry-bar__toggle:hover {
+  color: var(--accent-dark);
+  border-color: var(--accent);
+}
+
+.manual-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.manual-entry__weight {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.manual-entry__weight:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.manual-entry .btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .manual-entry {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -149,7 +218,6 @@ h1 {
 .records th,
 .records td {
   padding: 8px 6px;
-  border-bottom: 1px solid var(--border);
   text-align: left;
 }
 
@@ -158,6 +226,11 @@ h1 {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.records tbody tr:not(:last-child) td {
+  border-bottom: 1px solid var(--border);
 }
 
 .records td input {
@@ -166,6 +239,43 @@ h1 {
   font: inherit;
   border: 1px solid var(--border);
   border-radius: 6px;
+}
+
+.records__kg input.records__edit {
+  width: 84px;
+  font-family: var(--mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  border-color: var(--accent);
+}
+
+.records__edit-btn {
+  padding: 2px 4px;
+  font: inherit;
+  font-family: var(--mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: transparent;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.records__edit-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+.records__actions {
+  display: flex;
+  gap: 4px;
+  width: 1%;
+  white-space: nowrap;
+}
+
+.link--muted {
+  color: var(--text-muted);
 }
 
 .records__kg {
@@ -182,8 +292,13 @@ h1 {
 
 .records tfoot td {
   font-weight: 700;
-  border-bottom: none;
   border-top: 2px solid var(--text);
+}
+
+/* Hàng cuối của bảng không có đường kẻ dưới */
+.records tbody tr:last-child td,
+.records tfoot tr:last-child td {
+  border-bottom: none;
 }
 
 /* ===== Nút & thông báo ===== */
@@ -238,6 +353,65 @@ h1 {
   border: none;
   cursor: pointer;
   text-decoration: underline;
+}
+
+/* Nút nhỏ trong bảng lần cân: Huỷ / Xoá */
+.records__actions .link {
+  padding: 2px 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  border-radius: 0;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.records__actions .link--muted {
+  color: var(--text-muted);
+}
+
+.records__actions .link--muted:hover {
+  color: var(--text);
+  background: #eef0f2;
+}
+
+.records__actions .link--danger:hover {
+  background: #fef2f2;
+}
+
+.records__actions .link--print {
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+.records__actions .link--print:hover {
+  background: #f0fdf4;
+}
+
+.records__actions .link--edit {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.records__actions .link--edit:hover {
+  background: #eff6ff;
+}
+
+/* ===== Lịch sử phiếu ===== */
+
+.history {
+  margin-top: 16px;
+}
+
+.history__code {
+  font-family: var(--mono);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history__time {
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .error,

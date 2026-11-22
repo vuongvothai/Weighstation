@@ -8,7 +8,7 @@ import { DEFAULT_BAG_COUNT, DRAFT_STORAGE_KEY } from '../config'
  * Draft được mirror vào `localStorage` để không mất khi reload (mất điện giữa ca).
  */
 
-const EMPTY_DRAFT = { ticketUuid: null, customerName: '', records: [] }
+const EMPTY_DRAFT = { ticketUuid: null, ticketCode: null, customerName: '', records: [] }
 
 function newTicketUuid() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -29,6 +29,7 @@ function readStoredDraft() {
     const parsed = JSON.parse(raw)
     return {
       ticketUuid: typeof parsed.ticketUuid === 'string' ? parsed.ticketUuid : null,
+      ticketCode: typeof parsed.ticketCode === 'string' ? parsed.ticketCode : null,
       customerName: typeof parsed.customerName === 'string' ? parsed.customerName : '',
       records: Array.isArray(parsed.records) ? parsed.records : [],
     }
@@ -40,12 +41,14 @@ function readStoredDraft() {
 /**
  * @returns {{
  *   ticketUuid: string|null,
+ *   ticketCode: string|null,
  *   customerName: string,
  *   records: Array<{weighSequence:number, bagCount:number, weightKg:number, weighedAt:string}>,
  *   setCustomerName: (name: string) => void,
  *   addRecord: (weightKg: number, bagCount?: number) => void,
  *   updateRecord: (weighSequence: number, patch: object) => void,
  *   removeRecord: (weighSequence: number) => void,
+ *   loadTicket: (ticket: object) => void,
  *   reset: () => void,
  *   totalBags: number,
  *   totalWeightKg: number,
@@ -98,8 +101,23 @@ export function useTicketDraft() {
     }))
   }, [])
 
+  /**
+   * Nạp 1 phiếu đã lưu vào draft để chỉnh sửa.
+   *
+   * Giữ nguyên `ticketUuid` nên khi bấm "Lưu phiếu" screen sẽ gọi `PUT` thay vì
+   * `POST` — không tạo phiếu trùng.
+   */
+  const loadTicket = useCallback((ticket) => {
+    setDraft({
+      ticketUuid: ticket.ticketUuid,
+      ticketCode: ticket.ticketCode ?? null,
+      customerName: ticket.customerName ?? '',
+      records: Array.isArray(ticket.records) ? ticket.records : [],
+    })
+  }, [])
+
   const reset = useCallback(() => {
-    setDraft({ ticketUuid: newTicketUuid(), customerName: '', records: [] })
+    setDraft({ ticketUuid: newTicketUuid(), ticketCode: null, customerName: '', records: [] })
   }, [])
 
   const totals = useMemo(() => {
@@ -110,12 +128,14 @@ export function useTicketDraft() {
 
   return {
     ticketUuid: draft.ticketUuid,
+    ticketCode: draft.ticketCode,
     customerName: draft.customerName,
     records: draft.records,
     setCustomerName,
     addRecord,
     updateRecord,
     removeRecord,
+    loadTicket,
     reset,
     totalBags: totals.totalBags,
     totalWeightKg: totals.totalWeightKg,

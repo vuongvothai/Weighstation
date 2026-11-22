@@ -15,6 +15,16 @@ export async function createTicket(payload) {
 }
 
 /**
+ * Danh sách phiếu đã lưu — dùng cho màn hình lịch sử.
+ *
+ * @returns {Promise<Array<{ticketUuid:string, ticketCode:string, customerName:string, weighedAt:string}>>}
+ */
+export async function listTickets() {
+  const res = await http.get('/api/tickets')
+  return res.data
+}
+
+/**
  * @param {string} ticketUuid
  * @returns {Promise<object>}
  */

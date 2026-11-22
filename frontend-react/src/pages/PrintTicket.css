@@ -146,11 +146,30 @@
     display: none;
   }
 
+  /*
+   * Mỗi .receipt cao đúng 1/3 chiều cao vùng in (297mm - 3mm*2 = 291mm) nên 3
+   * phiếu nằm cạnh nhau trên 1 tờ A4. Phiếu dài tràn sang cột 2, cột 3 rồi mới
+   * sang tờ mới — không cần chia dữ liệu bằng JS.
+   */
   .receipt {
+    height: 97mm;
     margin: 0;
     padding: 2mm;
     border: none;
     /* Đường kẻ dọc để cắt 1/3 tờ A4 */
     border-right: 1px dashed #999;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Lặp lại tiêu đề cột khi bảng bị cắt qua nhiều cột in */
+  .weigh-table thead {
+    display: table-header-group;
+  }
+
+  /* Không cắt 1 dòng qua 2 cột */
+  .weigh-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

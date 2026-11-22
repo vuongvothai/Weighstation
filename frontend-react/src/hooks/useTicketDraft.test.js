@@ -70,11 +70,11 @@ describe('useTicketDraft', () => {
   it('lưu draft vào localStorage', () => {
     const { result } = renderHook(() => useTicketDraft())
 
-    act(() => result.current.setCustomerName('Anh Ba (Buôn Trấp)'))
+    act(() => result.current.setCustomerName('Nguyen Van A'))
     act(() => result.current.addRecord(124.5))
 
     const stored = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY))
-    expect(stored.customerName).toBe('Anh Ba (Buôn Trấp)')
+    expect(stored.customerName).toBe('Nguyen Van A')
     expect(stored.records).toHaveLength(1)
   })
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { errorMessage, fetchTicket } from '../api/tickets'
+import { formatDateTime } from '../utils/formatDateTime'
 import './PrintTicket.css'
 
 /**
@@ -8,6 +9,11 @@ import './PrintTicket.css'
  *
  * Giữ nguyên khối in từ `docs/designs/printed_slip.html`: khổ 70mm (1/3 A4
  * đứng), `@page { size: A4 portrait; margin: 3mm }`, và ẩn nút khi in.
+ *
+ * Trên màn hình phiếu hiển thị liền mạch như bản gốc. Khi in, `.receipt` cao
+ * đúng 1/3 A4 nên 3 phiếu nằm cạnh nhau trên 1 tờ; phiếu dài tự tràn sang cột
+ * 2, cột 3 rồi mới sang tờ A4 mới. Phần đầu mục (`.print-only-head`) chỉ hiện
+ * khi in và chỉ ở đầu mỗi cột — các cột tiếp theo không lặp lại.
  */
 export default function PrintTicket() {
   const { ticketUuid } = useParams()
@@ -79,7 +85,7 @@ export default function PrintTicket() {
           </div>
           <div className="info-row">
             <span>Loại:</span>
-            <span>Cà phê tươi</span>
+            <span>Cà phê nhân</span>
           </div>
         </div>
 
@@ -122,23 +128,4 @@ export default function PrintTicket() {
       </div>
     </main>
   )
-}
-
-/**
- * `2026-11-21T19:55:12+07:00` → `21/11/26 19:55` (giờ VN).
- */
-function formatDateTime(iso) {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  const parts = new Intl.DateTimeFormat('vi-VN', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(d)
-  const get = (type) => parts.find((p) => p.type === type)?.value ?? ''
-  return `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}`
 }

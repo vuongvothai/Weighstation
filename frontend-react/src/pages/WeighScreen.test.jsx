@@ -6,6 +6,8 @@ import WeighScreen from './WeighScreen'
 
 vi.mock('../api/tickets', () => ({
   createTicket: vi.fn(),
+  fetchTicket: vi.fn(),
+  updateTicket: vi.fn(),
   errorMessage: (err, fallback) => err?.message ?? fallback,
 }))
 
@@ -14,14 +16,16 @@ vi.mock('../hooks/useScaleWeight', async (importOriginal) => {
   return { ...actual, useScaleWeight: vi.fn() }
 })
 
-import { createTicket } from '../api/tickets'
+import { createTicket, fetchTicket, updateTicket } from '../api/tickets'
 import { useScaleWeight } from '../hooks/useScaleWeight'
 
-function renderScreen() {
+function renderScreen(path = '/tram-can') {
   return render(
-    <MemoryRouter initialEntries={['/tram-can']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/tram-can" element={<WeighScreen />} />
+        <Route path="/chinh-sua/:ticketUuid" element={<WeighScreen />} />
+        <Route path="/lich-su" element={<div>PRINT PAGE</div>} />
         <Route path="/in-phieu/:ticketUuid" element={<div>PRINT PAGE</div>} />
       </Routes>
     </MemoryRouter>,
@@ -40,6 +44,7 @@ describe('WeighScreen', () => {
     renderScreen()
 
     expect(screen.getByText(/Mất kết nối cân/)).toBeTruthy()
+    expect(screen.getByText(/có thể thêm thủ công bên dưới/)).toBeTruthy()
     expect(screen.getByText('––.–')).toBeTruthy()
   })
 
@@ -49,6 +54,8 @@ describe('WeighScreen', () => {
     renderScreen()
 
     expect(screen.getByText(/Ổn định/)).toBeTruthy()
+    expect(screen.getByText(/Nhấn/)).toBeTruthy()
+    expect(screen.getByText('Space')).toBeTruthy()
     expect(screen.getByText('124.5')).toBeTruthy()
   })
 
@@ -102,6 +109,28 @@ describe('WeighScreen', () => {
     expect(screen.getByText('Chưa có lần cân nào')).toBeTruthy()
   })
 
+  it('thêm lần cân thủ công khi không kết nối cân', async () => {
+    useScaleWeight.mockReturnValue({ value: null, stable: false, connected: false })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.type(screen.getByLabelText('Số cân thủ công (kg)'), '85.5')
+    await user.click(screen.getByRole('button', { name: 'Thêm lần cân' }))
+
+    expect(await screen.findByLabelText(/Số bao lần 1/)).toBeTruthy()
+    expect(screen.getAllByText('85.5')).toHaveLength(2)
+  })
+
+  it('báo lỗi khi thêm số cân thủ công không hợp lệ', async () => {
+    useScaleWeight.mockReturnValue({ value: null, stable: false, connected: false })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.click(screen.getByRole('button', { name: 'Thêm lần cân' }))
+
+    expect(await screen.findByText('Nhập số cân lớn hơn 0 kg.')).toBeTruthy()
+  })
+
   it('báo lỗi khi chưa nhập tên khách', async () => {
     useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
     const user = userEvent.setup()
@@ -147,20 +176,14 @@ describe('WeighScreen', () => {
     expect(await screen.findByText(/already exists/)).toBeTruthy()
   })
 
-  it('nút In phiếu chỉ bật sau khi lưu thành công', async () => {
+  it('nút Lịch sử chuyển sang trang lịch sử', async () => {
     useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
-    createTicket.mockResolvedValue({ ticketCode: 'CF-0001' })
     const user = userEvent.setup()
 
     renderScreen()
-    const printBtn = screen.getByRole('button', { name: 'In phiếu' })
-    expect(printBtn.disabled).toBe(true)
+    await user.click(screen.getByRole('button', { name: 'Lịch sử' }))
 
-    await user.keyboard(' ')
-    await user.type(screen.getByLabelText(/Tên khách/), 'Anh Ba')
-    await user.click(screen.getByRole('button', { name: 'Lưu phiếu' }))
-
-    await waitFor(() => expect(screen.getByRole('button', { name: 'In phiếu' }).disabled).toBe(false))
+    expect(await screen.findByText('PRINT PAGE')).toBeTruthy()
   })
 
   it('sửa số bao tại dòng cập nhật tổng', async () => {
@@ -175,5 +198,149 @@ describe('WeighScreen', () => {
     await user.type(bagInput, '5')
 
     expect(screen.getByText(/5\s*bao/)).toBeTruthy()
+  })
+
+  it('bấm vào số cân là sửa được ngay, không cần nút Sửa', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.keyboard(' ')
+
+    expect(await screen.findByRole('button', { name: 'Sửa số cân lần 1' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Xoá lần cân 1' })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Sửa số cân lần 1' }))
+
+    expect(screen.getByLabelText('Số cân lần 1')).toHaveProperty('value', '124.5')
+  })
+
+  it('sửa số cân tại dòng rồi cập nhật tổng', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.keyboard(' ')
+
+    await user.click(await screen.findByRole('button', { name: 'Sửa số cân lần 1' }))
+    const editInput = screen.getByLabelText('Số cân lần 1')
+    await user.clear(editInput)
+    await user.type(editInput, '200')
+    await user.keyboard('{Enter}')
+
+    expect(screen.queryByLabelText('Số cân lần 1')).toBeNull()
+    expect(screen.getAllByText('200.0')).toHaveLength(2)
+  })
+
+  it('huỷ sửa số cân bằng Escape, giữ nguyên số cũ', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.keyboard(' ')
+
+    await user.click(await screen.findByRole('button', { name: 'Sửa số cân lần 1' }))
+    const editInput = screen.getByLabelText('Số cân lần 1')
+    await user.clear(editInput)
+    await user.type(editInput, '999')
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByLabelText('Số cân lần 1')).toBeNull()
+    expect(screen.getAllByText('124.5').length).toBeGreaterThan(0)
+  })
+
+  it('báo lỗi khi sửa số cân không hợp lệ', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.keyboard(' ')
+
+    await user.click(await screen.findByRole('button', { name: 'Sửa số cân lần 1' }))
+    const editInput = screen.getByLabelText('Số cân lần 1')
+    await user.clear(editInput)
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByText('Số cân phải lớn hơn 0 kg.')).toBeTruthy()
+    expect(screen.getByLabelText('Số cân lần 1')).toBeTruthy()
+  })
+
+  it('ẩn ô nhập thủ công khi cân đang hoạt động', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+
+    renderScreen()
+
+    expect(screen.queryByLabelText('Số cân thủ công (kg)')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Thêm lần cân' })).toBeNull()
+  })
+
+  it('nút Thêm thủ công mở ô nhập khi cân đang hoạt động', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.click(screen.getByRole('button', { name: /Thêm thủ công/ }))
+
+    expect(screen.getByLabelText('Số cân thủ công (kg)')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Thêm lần cân' })).toBeTruthy()
+  })
+
+  it('nút Thêm thủ công đóng lại ô nhập', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.click(screen.getByRole('button', { name: 'Thêm thủ công' }))
+    await user.click(screen.getByRole('button', { name: 'Thu gọn' }))
+
+    expect(screen.queryByLabelText('Số cân thủ công (kg)')).toBeNull()
+  })
+
+  it('nạp phiếu cần sửa và lưu bằng PUT thay vì POST', async () => {
+    useScaleWeight.mockReturnValue({ value: null, stable: false, connected: false })
+    fetchTicket.mockResolvedValue({
+      ticketUuid: 'uuid-1',
+      ticketCode: 'CF-0007',
+      customerName: 'Khách Cũ',
+      records: [{ weighSequence: 1, bagCount: 2, weightKg: 100, weighedAt: '2026-11-21T19:55:12+07:00' }],
+    })
+    updateTicket.mockResolvedValue({})
+    const user = userEvent.setup()
+
+    renderScreen('/chinh-sua/uuid-1')
+
+    expect(await screen.findByDisplayValue('Khách Cũ')).toBeTruthy()
+    expect(screen.getByText(/Chỉnh sửa phiếu CF-0007/)).toBeTruthy()
+
+    await user.clear(screen.getByLabelText(/Tên khách/))
+    await user.type(screen.getByLabelText(/Tên khách/), 'Khách Mới')
+    await user.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+
+    await waitFor(() => expect(updateTicket).toHaveBeenCalledTimes(1))
+    expect(createTicket).not.toHaveBeenCalled()
+    expect(updateTicket.mock.calls[0][0]).toBe('uuid-1')
+    expect(updateTicket.mock.calls[0][1].customerName).toBe('Khách Mới')
+  })
+
+  it('báo lỗi khi không tải được phiếu cần sửa', async () => {
+    useScaleWeight.mockReturnValue({ value: null, stable: false, connected: false })
+    fetchTicket.mockRejectedValue(new Error('Không tải được phiếu'))
+
+    renderScreen('/chinh-sua/uuid-1')
+
+    expect(await screen.findByText('Không tải được phiếu')).toBeTruthy()
+  })
+
+  it('xoá 1 lần cân bằng nút Xoá ở dòng', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.keyboard(' ')
+    expect(await screen.findByLabelText(/Số bao lần 1/)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Xoá lần cân 1' }))
+
+    expect(screen.getByText('Chưa có lần cân nào')).toBeTruthy()
   })
 })

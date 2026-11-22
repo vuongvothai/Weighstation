@@ -15,16 +15,18 @@ const INITIAL_STATE = { value: null, stable: false, connected: false, raw: null,
 export function useScaleWeight(intervalMs = POLL_INTERVAL_MS) {
   const [state, setState] = useState(INITIAL_STATE)
   const timerRef = useRef(null)
+  const requestIdRef = useRef(0)
 
   useEffect(() => {
     let cancelled = false
 
     const poll = async () => {
+      const requestId = ++requestIdRef.current
       try {
         const res = await fetch(`${AGENT_BASE_URL}/weight`, { cache: 'no-store' })
         if (!res.ok) throw new Error(`agent ${res.status}`)
         const data = await res.json()
-        if (cancelled) return
+        if (cancelled || requestId !== requestIdRef.current) return
         setState({
           value: typeof data.value === 'number' ? data.value : null,
           stable: data.stable === true,
@@ -33,7 +35,7 @@ export function useScaleWeight(intervalMs = POLL_INTERVAL_MS) {
           ts: data.ts ?? null,
         })
       } catch {
-        if (cancelled) return
+        if (cancelled || requestId !== requestIdRef.current) return
         setState((prev) => (prev.connected ? { ...prev, connected: false, stable: false } : prev))
       }
     }
