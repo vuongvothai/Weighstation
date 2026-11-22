@@ -38,15 +38,15 @@
 ## Agent
 
 ### Module: Core
-- [ ] Viết lại `scale_agent.py` (đang rỗng) theo hướng FastAPI + pyserial
-- [ ] Background task đọc cổng COM mỗi 50ms, giữ số cuối trong buffer
-- [ ] Parse regex `[-+]?\d*\.\d+|\d+` như code mẫu
-- [ ] Logic `stable`: chuỗi chứa `ST` **và** 3 lần đọc liên tiếp không đổi
-- [ ] Bind `127.0.0.1:5000` (không expose ra LAN)
+- [x] Viết lại `scale_agent.py` (đang rỗng) theo hướng FastAPI + pyserial
+- [x] Background task đọc cổng COM mỗi 50ms, giữ số cuối trong buffer
+- [x] Parse regex `[-+]?\d*\.\d+|\d+` như code mẫu
+- [x] Logic `stable`: chuỗi chứa `ST` **và** 3 lần đọc liên tiếp không đổi
+- [x] Bind `127.0.0.1:5000` (không expose ra LAN)
 
 ### Module: API
-- [ ] `GET /health` — trạng thái kết nối cổng COM
-- [ ] `GET /weight` — số cân mới nhất đã parse
-- [ ] `POST /config` — đổi cổng COM / baud rate
-- [ ] CORS cho `http://localhost:5173`
-- [ ] Xử lý `serial.SerialException` → trả `connected=false`, không crash
+- [x] `GET /health` — trạng thái kết nối cổng COM
+- [x] `GET /weight` — số cân mới nhất đã parse
+- [x] `POST /config` — đổi cổng COM / baud rate
+- [x] CORS cho `http://localhost:5173`
+- [x] Xử lý `serial.SerialException` → trả `connected=false`, không crash
