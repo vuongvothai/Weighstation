@@ -1,18 +1,12 @@
-"""Đọc cân điện tử qua RS232 và expose REST ở 127.0.0.1:5000.
+"""Scale Agent — đọc cân Yaohua YH-T7E qua RS232, expose REST ở 127.0.0.1:5000.
 
-Agent chỉ phục vụ FE trên cùng máy (xem `docs/01-architecture.md`):
-
-- `GET /health` — trạng thái kết nối cổng COM
-- `GET /weight` — số cân mới nhất đã parse
-- `POST /config` — đổi cổng COM / baud rate
-
-Quy ước lỗi: agent **không** trả 4xx/5xx cho lỗi phần cứng. `connected=false`
-kèm `value=null` là trạng thái bình thường khi cân tắt hoặc mất cáp.
+Cân gửi frame 8 byte ASCII liên tục (không có \r\n), chữ số bị đảo ngược:
+    "=0.41000"  →  14.0 kg
+    "=00000.2"  →  2.0 kg
 """
 
 from __future__ import annotations
 
-import re
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -26,47 +20,53 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-# Cân gửi chuỗi như "ST,GS,+000124.5kg" — số có dấu, có phần thập phân.
-NUMBER_PATTERN = re.compile(r"[-+]?\d*\.\d+|\d+")
+# ── Cấu hình ──────────────────────────────────────────────────────────────────
 
 DEFAULT_PORT = "COM3"
-DEFAULT_BAUD_RATE = 9600
-
-# Cần 3 lần đọc liên tiếp giống nhau mới coi là ổn định.
+DEFAULT_BAUD_RATE = 1200
 STABLE_READS_REQUIRED = 3
-
-# Khoảng nghỉ giữa 2 lần đọc cổng, giây.
 READ_INTERVAL_S = 0.05
-
-# Chuỗi cân báo "đã ổn định".
-STABLE_MARKER = "ST"
-
-# FE gọi /weight mỗi 100ms.
 ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
+FRAME_LEN = 8          # "=" + 7 ký tự
+DIGITS = "0123456789."
 
-def parse_weight(raw: str) -> Optional[float]:
-    """Rút số cân từ chuỗi thô. Trả `None` nếu không tìm thấy số hợp lệ."""
-    if not raw:
+
+# ── Parse & ổn định ───────────────────────────────────────────────────────────
+
+def parse_frame(frame: str) -> Optional[float]:
+    """Đảo ngược 7 ký tự số trong frame rồi trả float.
+
+    "=0.41000"  →  "0.41000"[::-1] = "00014.0"  →  14.0
+    "-=14.0000" →  "14.0000"[::-1] = "0000.41"  →  -0.41
+    """
+    if len(frame) < FRAME_LEN:
         return None
-    match = NUMBER_PATTERN.search(raw)
-    if not match:
+
+    if frame[0] == "=":
+        digits, sign = frame[1:FRAME_LEN], ""
+    elif frame[:2] == "-=":
+        digits, sign = frame[2:FRAME_LEN], "-"
+    else:
         return None
+
     try:
-        return float(match.group())
+        value = float(digits[::-1])
+        return -value if sign else value
     except ValueError:
         return None
 
 
-def is_stable(raw: str, previous_values: list[float]) -> bool:
-    """Ổn định khi chuỗi chứa `ST` **và** 3 lần đọc liên tiếp không đổi."""
-    if STABLE_MARKER not in raw:
-        return False
-    if len(previous_values) < STABLE_READS_REQUIRED:
-        return False
-    recent = previous_values[-STABLE_READS_REQUIRED:]
-    return len(set(recent)) == 1
+def is_stable(frame: str, history: list[float]) -> bool:
+    """Ổn định = frame bắt đầu bằng "=" và 3 lần đọc giống nhau."""
+    return (
+        frame.startswith("=")
+        and len(history) >= STABLE_READS_REQUIRED
+        and len(set(history[-STABLE_READS_REQUIRED:])) == 1
+    )
 
+
+# ── State ─────────────────────────────────────────────────────────────────────
 
 def _now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="milliseconds")
@@ -74,8 +74,6 @@ def _now_iso() -> str:
 
 @dataclass
 class WeightState:
-    """Buffer số cân mới nhất, dùng chung giữa thread đọc cổng và request handler."""
-
     value: Optional[float] = None
     stable: bool = False
     raw: Optional[str] = None
@@ -86,20 +84,17 @@ class WeightState:
     last_error: Optional[str] = None
     _history: list[float] = field(default_factory=list)
 
-    def update(self, raw: str) -> None:
-        value = parse_weight(raw)
-        self.raw = raw
+    def update(self, frame: str) -> None:
+        value = parse_frame(frame)
+        self.raw = frame
         self.ts = _now_iso()
         if value is None:
             self.stable = False
             return
-
         self._history.append(value)
-        # Chỉ giữ đúng số lần đọc cần cho logic ổn định.
         del self._history[:-STABLE_READS_REQUIRED]
-
         self.value = value
-        self.stable = is_stable(raw, self._history)
+        self.stable = is_stable(frame, self._history)
 
     def reset_connection(self, connected: bool, error: Optional[str] = None) -> None:
         self.connected = connected
@@ -128,13 +123,9 @@ class WeightState:
         }
 
 
+# ── Đọc cổng COM ──────────────────────────────────────────────────────────────
+
 class ScaleReader:
-    """Đọc cổng COM trong background task, giữ số cuối trong `WeightState`.
-
-    Nếu không mở được cổng (chưa cắm cân, COM bị chiếm) thì agent vẫn chạy và
-    báo `connected=false` — không crash.
-    """
-
     def __init__(self, state: WeightState, port: str, baud_rate: int) -> None:
         self.state = state
         self.port = port
@@ -150,13 +141,12 @@ class ScaleReader:
 
     def stop(self) -> None:
         self._stop.set()
-        if self._thread is not None:
+        if self._thread:
             self._thread.join(timeout=2)
             self._thread = None
         self._close_serial()
 
     def reconfigure(self, port: str, baud_rate: int) -> None:
-        """Đóng cổng cũ, mở cổng mới. Dùng khi đổi cân hoặc đổi cổng."""
         self.stop()
         self.port = port
         self.baud_rate = baud_rate
@@ -165,13 +155,12 @@ class ScaleReader:
         self.start()
 
     def _close_serial(self) -> None:
-        if self._serial is None:
-            return
-        try:
-            self._serial.close()
-        except Exception:  # noqa: BLE001 - đóng cổng lỗi thì bỏ qua
-            pass
-        self._serial = None
+        if self._serial:
+            try:
+                self._serial.close()
+            except Exception:
+                pass
+            self._serial = None
 
     def _open_serial(self) -> bool:
         try:
@@ -182,47 +171,52 @@ class ScaleReader:
         self.state.reset_connection(True)
         return True
 
+    def _extract_frames(self, buffer: str) -> tuple[list[str], str]:
+        """Tách các frame 8 byte hợp lệ khỏi buffer, trả (frames, buffer còn lại)."""
+        frames = []
+        while len(buffer) >= FRAME_LEN:
+            if buffer[0] == "=" and all(c in DIGITS for c in buffer[1:7]) and buffer[7] in "0-":
+                frames.append(buffer[:FRAME_LEN])
+                buffer = buffer[FRAME_LEN:]
+            elif buffer[:2] == "-=" and all(c in DIGITS for c in buffer[2:8]):
+                frames.append(buffer[:FRAME_LEN])
+                buffer = buffer[FRAME_LEN:]
+            else:
+                buffer = buffer[1:]
+        return frames, buffer
+
     def _run(self) -> None:
+        buffer = ""
         while not self._stop.is_set():
             if self._serial is None and not self._open_serial():
-                # Chưa cắm cân hoặc COM bận — thử lại sau 1 nhịp.
                 time.sleep(READ_INTERVAL_S)
                 continue
 
             try:
-                line = self._serial.readline()
+                chunk = self._serial.read(self._serial.in_waiting or 1)
             except (serial.SerialException, OSError) as exc:
                 self._close_serial()
                 self.state.reset_connection(False, str(exc))
                 continue
 
-            if line:
-                self.state.update(line.decode("ascii", errors="ignore").strip())
+            if chunk:
+                buffer += chunk.decode("ascii", errors="ignore")
+                frames, buffer = self._extract_frames(buffer)
+                for frame in frames:
+                    self.state.update(frame)
 
             time.sleep(READ_INTERVAL_S)
 
 
+# ── REST API ──────────────────────────────────────────────────────────────────
+
 class ConfigRequest(BaseModel):
-    """Body của `POST /config`.
-
-    Nhận cả `baudRate` (theo `docs/03-api-contract.md`) và `baud_rate` (tên
-    Python) để FE gửi kiểu camelCase vẫn chạy.
-    """
-
     port: str = Field(min_length=1, max_length=32)
     baud_rate: int = Field(ge=300, le=256000, alias="baudRate")
-
     model_config = {"populate_by_name": True}
 
 
-def create_app(
-    port: str = DEFAULT_PORT,
-    baud_rate: int = DEFAULT_BAUD_RATE,
-) -> FastAPI:
-    """Tạo app FastAPI.
-
-    Tách hàm này ra để test inject được `ScaleReader` giả mà không cần cổng COM.
-    """
+def create_app(port: str = DEFAULT_PORT, baud_rate: int = DEFAULT_BAUD_RATE) -> FastAPI:
     state = WeightState(port=port, baud_rate=baud_rate)
     reader = ScaleReader(state, port, baud_rate)
 
@@ -255,7 +249,6 @@ def create_app(
         reader.reconfigure(payload.port, payload.baud_rate)
         return state.health()
 
-    # Expose để test thay reader mà không cần cổng COM thật.
     app.state.scale_state = state
     app.state.scale_reader = reader
     return app
@@ -263,7 +256,5 @@ def create_app(
 
 app = create_app()
 
-
 if __name__ == "__main__":
-    # Chỉ bind localhost — không expose ra LAN.
     uvicorn.run(app, host="127.0.0.1", port=5000)
