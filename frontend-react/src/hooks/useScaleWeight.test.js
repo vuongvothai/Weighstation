@@ -67,11 +67,11 @@ describe('useScaleWeight', () => {
 })
 
 describe('useSpaceToWeigh', () => {
-  it('gọi callback khi nhấn Space và preventDefault', () => {
+  it('gọi callback khi nhấn phím t và preventDefault', () => {
     const onCapture = vi.fn()
     renderHook(() => useSpaceToWeigh(onCapture, true, 0))
 
-    const event = new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true })
+    const event = new KeyboardEvent('keydown', { code: 'KeyT', key: 't', bubbles: true, cancelable: true })
     window.dispatchEvent(event)
 
     expect(onCapture).toHaveBeenCalledTimes(1)
@@ -82,8 +82,8 @@ describe('useSpaceToWeigh', () => {
     const onCapture = vi.fn()
     renderHook(() => useSpaceToWeigh(onCapture, true, 500))
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }))
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyT', key: 't', bubbles: true, cancelable: true }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyT', key: 't', bubbles: true, cancelable: true }))
 
     expect(onCapture).toHaveBeenCalledTimes(1)
   })
@@ -92,7 +92,7 @@ describe('useSpaceToWeigh', () => {
     const onCapture = vi.fn()
     renderHook(() => useSpaceToWeigh(onCapture, false, 0))
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyT', key: 't', bubbles: true, cancelable: true }))
 
     expect(onCapture).not.toHaveBeenCalled()
   })
@@ -103,7 +103,7 @@ describe('useSpaceToWeigh', () => {
 
     const input = document.createElement('input')
     document.body.appendChild(input)
-    input.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }))
+    input.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyT', key: 't', bubbles: true, cancelable: true }))
 
     expect(onCapture).not.toHaveBeenCalled()
     input.remove()

@@ -11,7 +11,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localho
 /** Tần suất FE hỏi agent, khớp với `docs/01-architecture.md`. */
 export const POLL_INTERVAL_MS = 100
 
-/** Khoảng cách tối thiểu giữa 2 lần ghi (chống bấm Space 2 lần liên tiếp). */
+/** Khoảng cách tối thiểu giữa 2 lần ghi (chống bấm phím `t` 2 lần liên tiếp). */
 export const WEIGH_DEBOUNCE_MS = 500
 
 /** Số bao mặc định cho mỗi lần cân. */

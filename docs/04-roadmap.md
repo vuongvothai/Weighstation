@@ -24,7 +24,7 @@
 ### Module: Màn hình cân
 - [x] Dọn `App.jsx` template Vite mặc định, thêm route `/tram-can`
 - [x] Hiển thị số cân realtime + badge trạng thái (🟢/🔴/⚫)
-- [x] Bắt phím `Space` → ghi 1 lần cân vào state tạm, `preventDefault` để không scroll
+- [x] Bắt phím `t` → ghi 1 lần cân vào state tạm, `preventDefault` để không scroll
 - [x] Mặc định `bagCount = 2`, cho sửa tại dòng
 - [x] Nút "Lưu phiếu" → gọi `POST /api/tickets` (batch), nhận `ticketCode`
 - [x] Nút "In phiếu" → điều hướng sang `/in-phieu/:ticketUuid`

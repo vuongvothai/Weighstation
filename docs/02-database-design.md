@@ -8,7 +8,7 @@
 
 ### Bảng `weigh_record` — một lần cân
 
-Mỗi lần operator nhấn Space tạo 1 bản ghi. Một phiếu cân gồm nhiều `weigh_record`.
+Mỗi lần operator nhấn phím `t` tạo 1 bản ghi. Một phiếu cân gồm nhiều `weigh_record`.
 
 ```sql
 CREATE TABLE weigh_record (

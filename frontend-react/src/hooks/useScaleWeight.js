@@ -61,9 +61,9 @@ export function useScaleStatus() {
 }
 
 /**
- * Ghi 1 lần cân vào state tạm khi operator nhấn Space.
+ * Ghi 1 lần cân vào state tạm khi operator nhấn phím `t`.
  *
- * `preventDefault` để Space không scroll trang. Có debounce để chặn double-tap.
+ * `preventDefault` để `t` không scroll trang. Có debounce để chặn double-tap.
  *
  * @param {(weight: number) => void} onCapture
  * @param {boolean} enabled
@@ -82,7 +82,7 @@ export function useSpaceToWeigh(onCapture, enabled = true, debounceMs = 500) {
     if (!enabled) return undefined
 
     const onKeyDown = (event) => {
-      if (event.code !== 'Space' && event.key !== ' ') return
+      if (event.code !== 'KeyT' && event.key.toLowerCase() !== 't') return
       const target = event.target
       const tag = target?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return

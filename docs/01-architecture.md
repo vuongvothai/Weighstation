@@ -26,7 +26,7 @@ flowchart TD
 
 1. **Cân → Agent**: Cân điện tử gửi dữ liệu qua RS232, Agent đọc và expose REST API tại `127.0.0.1:5000`.
 2. **Agent → FE (realtime)**: FE poll `GET /weight` mỗi 100ms để hiển thị số cân realtime.
-3. **FE giữ dữ liệu tạm**: Mỗi lần nhấn Space, FE ghi 1 lần cân vào state tạm (không gọi BE ngay). Dữ liệu tạm được lưu vào `localStorage` để không mất khi reload.
+3. **FE giữ dữ liệu tạm**: Mỗi lần nhấn phím `t`, FE ghi 1 lần cân vào state tạm (không gọi BE ngay). Dữ liệu tạm được lưu vào `localStorage` để không mất khi reload.
 4. **Nhấn Lưu → BE**: Khi operator nhấn nút "Lưu phiếu", FE gửi **toàn bộ phiếu** (mảng records) lên BE 1 lần duy nhất.
 5. **BE validate/tính toán → DB**: BE validate dữ liệu, tính tổng số bao/tổng cân, sinh `ticket_code`, lưu vào MySQL.
 6. **In phiếu**: Sau khi lưu thành công, FE điều hướng sang trang in, lấy dữ liệu từ BE để in.
@@ -47,6 +47,6 @@ flowchart TD
 |---|---|
 | Cổng COM bị chiếm | `/health` trả `disconnected`, FE cho nhập tay |
 | Cân báo `ST` nhưng vẫn nhảy số | FE chỉ cho ghi khi `stable == true` |
-| Bấm Space 2 lần liên tiếp | FE debounce 500ms, BE validate trùng `weighSequence` |
+| Bấm phím `t` 2 lần liên tiếp | FE debounce 500ms, BE validate trùng `weighSequence` |
 | Mất điện giữa ca | FE lưu draft vào `localStorage` |
 | Nhấn Lưu nhiều lần | BE trả `409` nếu `ticketUuid` đã tồn tại |

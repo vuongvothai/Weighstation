@@ -5,7 +5,7 @@ import { useScaleWeight, useSpaceToWeigh } from '../hooks/useScaleWeight'
 import { useTicketDraft } from '../hooks/useTicketDraft'
 
 /**
- * Màn hình `/tram-can` — hiển thị số cân realtime, ghi lần cân bằng Space,
+ * Màn hình `/tram-can` — hiển thị số cân realtime, ghi lần cân bằng phím `t`,
  * rồi gửi cả phiếu 1 lần khi operator nhấn "Lưu phiếu".
  *
  * Khi URL có `?sua={ticketUuid}` thì nạp phiếu đó vào draft và lưu bằng `PUT`
@@ -52,7 +52,7 @@ export default function WeighScreen() {
   }, [editingUuid, draft.loadTicket])
 
   const canCapture = connected && stable && value !== null && value > 0 && !saving
-  // Ô nhập tay mặc định chỉ hiện khi cân không dùng được (Space không ghi được);
+  // Ô nhập tay mặc định chỉ hiện khi cân không dùng được (phím `t` không ghi được);
   // operator vẫn mở/đóng được bằng nút "Thêm thủ công".
   const [manualOpen, setManualOpen] = useState(null)
   const showManualEntry = manualOpen ?? !canCapture
@@ -110,7 +110,7 @@ export default function WeighScreen() {
 
   const handleSave = useCallback(async () => {
     if (draft.records.length === 0) {
-      setError('Chưa có lần cân nào. Nhấn Space khi số cân ổn định để ghi.')
+      setError('Chưa có lần cân nào. Nhấn phím t khi số cân ổn định để ghi.')
       return
     }
     if (!draft.customerName.trim()) {
@@ -175,11 +175,11 @@ export default function WeighScreen() {
       <p className="hint" role="status">
         {canCapture ? (
           <>
-            Nhấn <kbd>Space</kbd> để ghi 1 lần cân
+            Nhấn <kbd>t</kbd> để ghi 1 lần cân
             {draft.records.length > 0 && <> · đã ghi {draft.records.length} lần</>}
           </>
         ) : connected ? (
-          <>Chờ số cân ổn định, sau đó nhấn <kbd>Space</kbd> để ghi</>
+                      <>Chờ số cân ổn định, sau đó nhấn <kbd>t</kbd> để ghi</>
         ) : (
           <>Cân chưa kết nối — có thể thêm thủ công bên dưới</>
         )}

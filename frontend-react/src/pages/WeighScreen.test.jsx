@@ -55,7 +55,7 @@ describe('WeighScreen', () => {
 
     expect(screen.getByText(/Ổn định/)).toBeTruthy()
     expect(screen.getByText(/Nhấn/)).toBeTruthy()
-    expect(screen.getByText('Space')).toBeTruthy()
+    expect(screen.getByText('t')).toBeTruthy()
     expect(screen.getByText('124.5')).toBeTruthy()
   })
 
@@ -67,12 +67,12 @@ describe('WeighScreen', () => {
     expect(screen.getByText(/Đang dao động/)).toBeTruthy()
   })
 
-  it('Space ghi 1 lần cân vào bảng', async () => {
+  it('phím t ghi 1 lần cân vào bảng', async () => {
     useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
 
     expect(await screen.findByLabelText(/Số bao lần 1/)).toBeTruthy()
     expect(screen.queryByText('Chưa có lần cân nào')).toBeNull()
@@ -83,7 +83,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
 
     expect(screen.getByText('Chưa có lần cân nào')).toBeTruthy()
   })
@@ -95,16 +95,16 @@ describe('WeighScreen', () => {
     renderScreen()
     await user.click(screen.getByRole('button', { name: 'Lưu phiếu' }))
 
-    expect(await screen.findByText(/Chưa có lần cân nào\. Nhấn Space/)).toBeTruthy()
+      expect(await screen.findByText(/Chưa có lần cân nào\. Nhấn phím t/)).toBeTruthy()
     expect(createTicket).not.toHaveBeenCalled()
   })
 
-  it('Space không ghi khi chưa có lần cân nào được nhập', async () => {
+    it('phím t không ghi khi chưa có lần cân nào được nhập', async () => {
     useScaleWeight.mockReturnValue({ value: null, stable: false, connected: false })
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
 
     expect(screen.getByText('Chưa có lần cân nào')).toBeTruthy()
   })
@@ -136,7 +136,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
     await user.click(screen.getByRole('button', { name: 'Lưu phiếu' }))
 
     expect(await screen.findByText(/Chưa nhập tên khách/)).toBeTruthy()
@@ -149,7 +149,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
     await user.type(screen.getByLabelText(/Tên khách/), 'Anh Ba')
     await user.click(screen.getByRole('button', { name: 'Lưu phiếu' }))
 
@@ -169,7 +169,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
     await user.type(screen.getByLabelText(/Tên khách/), 'Anh Ba')
     await user.click(screen.getByRole('button', { name: 'Lưu phiếu' }))
 
@@ -191,7 +191,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
 
     const bagInput = await screen.findByLabelText(/Số bao lần 1/)
     await user.clear(bagInput)
@@ -205,7 +205,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
 
     expect(await screen.findByRole('button', { name: 'Sửa số cân lần 1' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Xoá lần cân 1' })).toBeTruthy()
@@ -220,7 +220,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
 
     await user.click(await screen.findByRole('button', { name: 'Sửa số cân lần 1' }))
     const editInput = screen.getByLabelText('Số cân lần 1')
@@ -237,7 +237,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
 
     await user.click(await screen.findByRole('button', { name: 'Sửa số cân lần 1' }))
     const editInput = screen.getByLabelText('Số cân lần 1')
@@ -254,7 +254,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+      await user.keyboard('t')
 
     await user.click(await screen.findByRole('button', { name: 'Sửa số cân lần 1' }))
     const editInput = screen.getByLabelText('Số cân lần 1')
@@ -336,7 +336,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.keyboard(' ')
+    await user.keyboard('t')
     expect(await screen.findByLabelText(/Số bao lần 1/)).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: 'Xoá lần cân 1' }))
