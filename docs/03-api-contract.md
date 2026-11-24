@@ -11,12 +11,15 @@ Chỉ FE trên cùng máy gọi. Không xác thực.
   "connected": true,
   "port": "COM3",
   "baudRate": 9600,
+  "autoDetect": true,
   "lastRaw": "ST,GS,+000124.5kg",
   "lastReadAt": "2026-11-21T19:55:12.482+07:00"
 }
 ```
 
 `connected=false` khi không mở được cổng COM hoặc mất kết nối giữa chừng.
+
+`baudRate` là baud **thực đang dùng** sau khi dò (hoặc giá trị cấu hình nếu tắt auto-detect). `autoDetect` cho biết agent có đang tự dò baud hay không.
 
 ### `GET /weight`
 
@@ -44,10 +47,22 @@ Trả về số cân mới nhất đã parse. FE gọi mỗi 100ms.
 ### `POST /config`
 
 ```json
-{ "port": "COM4", "baudRate": 4800 }
+{ "port": "COM4", "baudRate": 4800, "autoDetect": true }
 ```
 
 Đóng cổng cũ, mở cổng mới. Trả về `/health` mới. Dùng khi đổi cân hoặc đổi cổng.
+
+| Trường | Kiểu | Ghi chú |
+|---|---|---|
+| `port` | string | Cổng COM mới (bắt buộc) |
+| `baudRate` | number | Baud cấu hình (mặc định 9600). Bị bỏ qua khi `autoDetect=true` và dò ra baud khác |
+| `autoDetect` | boolean \| null | Bật/tắt tự dò baud. Bỏ trống = giữ nguyên thiết lập hiện tại |
+
+**Tự dò baud:** khi `autoDetect=true`, agent thử lần lượt các baud trong
+`[1200, 2400, 4800, 9600, 19200, 38400, 115200]`, mỗi baud mở cổng ~0.6s và đo
+mật độ byte ASCII in được. Baud cho nhiều byte ASCII hợp lệ nhất (và thắng rõ
+rệt) được chọn. Nhờ vậy cân cấu hình 1200 hay 9600 đều đọc được mà không cần
+cấu hình tay — miễn dữ liệu là ASCII. Dò không ra thì giữ `baudRate` cấu hình.
 
 ## Backend nghiệp vụ — Spring Boot (`:8080/api`)
 

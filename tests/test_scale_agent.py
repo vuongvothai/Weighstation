@@ -6,7 +6,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 import scale_agent
-from scale_agent import WeightState, create_app, is_stable, parse_frame
+from scale_agent import (
+    WeightState,
+    create_app,
+    detect_baud_rate,
+    is_stable,
+    parse_frame,
+)
 
 
 @pytest.fixture
@@ -127,3 +133,89 @@ def test_config_rejects_invalid_baud(client):
 def test_config_rejects_empty_port(client):
     res = client.post("/config", json={"port": "", "baudRate": 9600})
     assert res.status_code == 422
+
+
+# ── Auto-detect baud ──────────────────────────────────────────────────────────
+
+class _FakeSerial:
+    """Serial giả: phát `payload` theo đúng baud được yêu cầu."""
+
+    def __init__(self, port, baud_rate, timeout=None, payloads=None):
+        self.port = port
+        self.baud_rate = baud_rate
+        self._payload = (payloads or {}).get(baud_rate, b"")
+        self._sent = False
+        self.closed = False
+
+    @property
+    def in_waiting(self):
+        return len(self._payload) if not self._sent else 0
+
+    def read(self, size=1):
+        if self._sent:
+            return b""
+        self._sent = True
+        return self._payload[:size]
+
+    def close(self):
+        self.closed = True
+
+
+def _patch_serial(monkeypatch, payloads):
+    monkeypatch.setattr(
+        scale_agent.serial,
+        "Serial",
+        lambda port, baud_rate, timeout=None: _FakeSerial(port, baud_rate, timeout, payloads),
+    )
+
+
+def test_detect_baud_picks_correct_rate(monkeypatch):
+    # Cân chạy 9600: chỉ baud 9600 trả ra ASCII hợp lệ, các baud khác là rác.
+    _patch_serial(monkeypatch, {9600: b"=0.41000=0.41000=0.41000"})
+    assert detect_baud_rate("COM_TEST") == 9600
+
+
+def test_detect_baud_picks_1200(monkeypatch):
+    _patch_serial(monkeypatch, {1200: b"=00000.2=00000.2=00000.2"})
+    assert detect_baud_rate("COM_TEST") == 1200
+
+
+def test_detect_baud_none_when_no_data(monkeypatch):
+    _patch_serial(monkeypatch, {})
+    assert detect_baud_rate("COM_TEST") is None
+
+
+def test_detect_baud_none_when_only_garbage(monkeypatch):
+    # Chỉ có byte ngoài dải ASCII in được → không baud nào thắng.
+    _patch_serial(monkeypatch, {baud: b"\x00\x01\x02" * 20 for baud in scale_agent.BAUD_CANDIDATES})
+    assert detect_baud_rate("COM_TEST") is None
+
+
+def test_reader_uses_detected_baud(monkeypatch):
+    _patch_serial(monkeypatch, {9600: b"=0.41000=0.41000=0.41000"})
+    state = WeightState()
+    reader = scale_agent.ScaleReader(state, "COM_TEST", 1200, auto_detect=True)
+    assert reader._resolve_baud() == 9600
+    assert state.baud_rate == 9600
+
+
+def test_reader_keeps_configured_baud_when_autodetect_off(monkeypatch):
+    _patch_serial(monkeypatch, {9600: b"=0.41000=0.41000=0.41000"})
+    state = WeightState()
+    reader = scale_agent.ScaleReader(state, "COM_TEST", 1200, auto_detect=False)
+    assert reader._resolve_baud() == 1200
+    assert reader.baud_rate == 1200
+
+
+def test_health_reports_auto_detect(client):
+    body = client.get("/health").json()
+    assert body["autoDetect"] is scale_agent.AUTO_DETECT_BAUD
+
+
+def test_config_can_disable_auto_detect(client):
+    res = client.post("/config", json={"port": "COM4", "baudRate": 9600, "autoDetect": False})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["port"] == "COM4"
+    assert body["baudRate"] == 9600
+    assert body["autoDetect"] is False
