@@ -119,6 +119,53 @@ h1 {
   margin-top: 14px;
 }
 
+.records-toggle-bar {
+  margin-top: 12px;
+}
+
+.records-toggle {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.records-toggle:hover {
+  color: var(--accent-dark);
+  border-color: var(--accent);
+}
+
+.records__bag-default {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.records__bag-default input {
+  width: 56px;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.records__bag-default input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .manual-entry-bar__toggle {
   padding: 4px 10px;
   font-size: 0.8rem;
@@ -221,6 +268,19 @@ h1 {
   text-align: left;
 }
 
+/* Cột thao tác: sát mép phải khung, margin phải tối thiểu */
+.records th:last-child,
+.records td:last-child {
+  padding-right: 0;
+  text-align: right;
+}
+
+/* Nút Huỷ/Xoá: canh giữa theo chiều dọc, sát cột số cân */
+.records td.records__actions {
+  vertical-align: middle;
+  padding-left: 2px;
+}
+
 .records th {
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -269,9 +329,42 @@ h1 {
 
 .records__actions {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
   width: 1%;
   white-space: nowrap;
+}
+
+/* Cột ghi chú: chiếm phần còn lại, sát nút Xoá */
+.records__note {
+  width: auto;
+}
+
+.records__note input {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.records__note input::placeholder {
+  color: var(--text-muted);
+}
+
+.records__note input:hover {
+  border-color: var(--border);
+}
+
+.records__note input:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .link--muted {
@@ -357,7 +450,7 @@ h1 {
 
 /* Nút nhỏ trong bảng lần cân: Huỷ / Xoá */
 .records__actions .link {
-  padding: 2px 6px;
+  padding: 2px 4px;
   font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.4;

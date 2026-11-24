@@ -114,6 +114,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
+    await user.click(screen.getByRole('button', { name: /Thêm thủ công/ }))
     await user.type(screen.getByLabelText('Số cân thủ công (kg)'), '85.5')
     await user.click(screen.getByRole('button', { name: 'Thêm lần cân' }))
 
@@ -121,11 +122,21 @@ describe('WeighScreen', () => {
     expect(screen.getAllByText('85.5')).toHaveLength(2)
   })
 
+  it('ô nhập thủ công mặc định thu gọn dù cân không kết nối', () => {
+    useScaleWeight.mockReturnValue({ value: null, stable: false, connected: false })
+
+    renderScreen()
+
+    expect(screen.queryByLabelText('Số cân thủ công (kg)')).toBeNull()
+    expect(screen.getByRole('button', { name: /Thêm thủ công/ })).toBeTruthy()
+  })
+
   it('báo lỗi khi thêm số cân thủ công không hợp lệ', async () => {
     useScaleWeight.mockReturnValue({ value: null, stable: false, connected: false })
     const user = userEvent.setup()
 
     renderScreen()
+    await user.click(screen.getByRole('button', { name: /Thêm thủ công/ }))
     await user.click(screen.getByRole('button', { name: 'Thêm lần cân' }))
 
     expect(await screen.findByText('Nhập số cân lớn hơn 0 kg.')).toBeTruthy()
@@ -159,7 +170,7 @@ describe('WeighScreen', () => {
     const payload = createTicket.mock.calls[0][0]
     expect(payload.customerName).toBe('Anh Ba')
     expect(payload.records).toHaveLength(1)
-    expect(payload.records[0]).toMatchObject({ weighSequence: 1, bagCount: 2, weightKg: 124.5 })
+    expect(payload.records[0]).toMatchObject({ weighSequence: 1, bagCount: 1, weightKg: 124.5 })
     expect(typeof payload.ticketUuid).toBe('string')
   })
 
@@ -342,5 +353,73 @@ describe('WeighScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Xoá lần cân 1' }))
 
     expect(screen.getByText('Chưa có lần cân nào')).toBeTruthy()
+  })
+
+  it('chỉ hiện 3 lần cân cuối và mở rộng được bằng nút xem tất cả', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    for (let i = 0; i < 5; i += 1) {
+      // Bỏ qua debounce 500ms giữa 2 lần ghi.
+      await user.keyboard('t')
+      await new Promise((resolve) => setTimeout(resolve, 520))
+    }
+
+    expect(await screen.findByLabelText(/Số bao lần 5/)).toBeTruthy()
+    expect(screen.getByLabelText(/Số bao lần 3/)).toBeTruthy()
+    expect(screen.queryByLabelText(/Số bao lần 2/)).toBeNull()
+    expect(screen.getByText(/Xem tất cả/)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Xem tất cả/ }))
+
+    expect(screen.getByLabelText(/Số bao lần 1/)).toBeTruthy()
+    expect(screen.getByLabelText(/Số bao lần 2/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Thu gọn/ })).toBeTruthy()
+  })
+
+  it('ô số bao mặc định quyết định số bao của lần cân kế tiếp', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    const bagInput = screen.getByLabelText('Số bao mặc định cho lần cân kế tiếp')
+    expect(bagInput).toHaveProperty('value', '1')
+
+    await user.clear(bagInput)
+    await user.type(bagInput, '4')
+    // Trả focus về body để phím `t` không bị input/bộ định tuyến bỏ qua.
+    await user.click(document.body)
+    await user.keyboard('t')
+
+    expect(await screen.findByLabelText(/Số bao lần 1/)).toHaveProperty('value', '4')
+  })
+
+  it('ô số bao mặc định để trống thì nhận 1', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    const bagInput = screen.getByLabelText('Số bao mặc định cho lần cân kế tiếp')
+    await user.clear(bagInput)
+    await user.click(document.body)
+    await user.keyboard('t')
+
+    expect(await screen.findByLabelText(/Số bao lần 1/)).toHaveProperty('value', '1')
+  })
+
+  it('ghi chú từng lần cân được lưu vào phiếu', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    createTicket.mockResolvedValue({ ticketCode: 'CF-0002', totalBags: 1, totalWeightKg: 124.5 })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.keyboard('t')
+    await user.type(await screen.findByLabelText('Ghi chú lần 1'), 'bao ẩm')
+    await user.type(screen.getByLabelText(/Tên khách/), 'Anh Ba')
+    await user.click(screen.getByRole('button', { name: 'Lưu phiếu' }))
+
+    expect(await screen.findByText(/Đã lưu phiếu CF-0002/)).toBeTruthy()
+    expect(createTicket.mock.calls[0][0].records[0].note).toBe('bao ẩm')
   })
 })

@@ -15,15 +15,15 @@ describe('useTicketDraft', () => {
     expect(result.current.records).toEqual([])
   })
 
-  it('addRecord đánh số thứ tự tăng dần và mặc định 2 bao', () => {
+  it('addRecord đánh số thứ tự tăng dần và mặc định 1 bao', () => {
     const { result } = renderHook(() => useTicketDraft())
 
     act(() => result.current.addRecord(124.5))
     act(() => result.current.addRecord(126))
 
     expect(result.current.records).toHaveLength(2)
-    expect(result.current.records[0]).toMatchObject({ weighSequence: 1, bagCount: 2, weightKg: 124.5 })
-    expect(result.current.records[1]).toMatchObject({ weighSequence: 2, bagCount: 2, weightKg: 126 })
+    expect(result.current.records[0]).toMatchObject({ weighSequence: 1, bagCount: 1, weightKg: 124.5 })
+    expect(result.current.records[1]).toMatchObject({ weighSequence: 2, bagCount: 1, weightKg: 126 })
   })
 
   it('addRecord cho phép sửa số bao tại dòng', () => {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createTicket, errorMessage, fetchTicket, updateTicket } from '../api/tickets'
+import { DEFAULT_BAG_COUNT, RECENT_RECORD_LIMIT } from '../config'
 import { useScaleWeight, useSpaceToWeigh } from '../hooks/useScaleWeight'
 import { useTicketDraft } from '../hooks/useTicketDraft'
 
@@ -20,6 +21,10 @@ export default function WeighScreen() {
   const [error, setError] = useState(null)
   const [savedCode, setSavedCode] = useState(null)
   const [manualWeight, setManualWeight] = useState('')
+  // Số bao tự điền cho lần cân kế tiếp; để trống thì dùng DEFAULT_BAG_COUNT.
+  const [defaultBagCount, setDefaultBagCount] = useState(String(DEFAULT_BAG_COUNT))
+  // Mặc định chỉ hiện 3 lần cân cuối; bật cờ này để xem toàn bộ.
+  const [showAllRecords, setShowAllRecords] = useState(false)
   const [editingSequence, setEditingSequence] = useState(null)
   const [editWeight, setEditWeight] = useState('')
   const [loadingTicket, setLoadingTicket] = useState(Boolean(editingUuid))
@@ -52,17 +57,22 @@ export default function WeighScreen() {
   }, [editingUuid, draft.loadTicket])
 
   const canCapture = connected && stable && value !== null && value > 0 && !saving
-  // Ô nhập tay mặc định chỉ hiện khi cân không dùng được (phím `t` không ghi được);
-  // operator vẫn mở/đóng được bằng nút "Thêm thủ công".
-  const [manualOpen, setManualOpen] = useState(null)
-  const showManualEntry = manualOpen ?? !canCapture
+  // Ô nhập tay mặc định thu gọn; operator mở/đóng bằng nút "Thêm thủ công".
+  const [manualOpen, setManualOpen] = useState(false)
+  const showManualEntry = manualOpen
+
+  // Số bao cho lần cân kế tiếp: ô chọn ở đầu bảng, rỗng thì nhận mặc định.
+  const nextBagCount = useMemo(() => {
+    const parsed = Number.parseInt(defaultBagCount, 10)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_BAG_COUNT
+  }, [defaultBagCount])
 
   const capture = useCallback(() => {
     if (!canCapture) return
     setError(null)
     setSavedCode(null)
-    draft.addRecord(value)
-  }, [canCapture, value, draft])
+    draft.addRecord(value, nextBagCount)
+  }, [canCapture, value, nextBagCount, draft])
 
   const addManualRecord = useCallback((event) => {
     event.preventDefault()
@@ -73,9 +83,9 @@ export default function WeighScreen() {
     }
     setError(null)
     setSavedCode(null)
-    draft.addRecord(weight)
+    draft.addRecord(weight, nextBagCount)
     setManualWeight('')
-  }, [manualWeight, draft])
+  }, [manualWeight, nextBagCount, draft])
 
   const startEdit = useCallback((record) => {
     setEditingSequence(record.weighSequence)
@@ -148,6 +158,13 @@ export default function WeighScreen() {
     return { icon: '🔴', label: 'Đang dao động', cls: 'is-unstable' }
   }, [connected, stable])
 
+  // Chỉ render 3 lần cân cuối để bảng gọn; nút bên dưới mở ra toàn bộ.
+  const hiddenRecordCount = Math.max(0, draft.records.length - RECENT_RECORD_LIMIT)
+  const visibleRecords = useMemo(
+    () => (showAllRecords ? draft.records : draft.records.slice(-RECENT_RECORD_LIMIT)),
+    [draft.records, showAllRecords],
+  )
+
   if (loadingTicket) {
     return <main className="screen">Đang tải phiếu cần sửa...</main>
   }
@@ -201,20 +218,33 @@ export default function WeighScreen() {
           <thead>
             <tr>
               <th>Lần</th>
-              <th>Số bao</th>
+              <th>
+                <label className="records__bag-default">
+                  <span>Số bao</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={defaultBagCount}
+                    placeholder={String(DEFAULT_BAG_COUNT)}
+                    aria-label="Số bao mặc định cho lần cân kế tiếp"
+                    onChange={(e) => setDefaultBagCount(e.target.value)}
+                  />
+                </label>
+              </th>
               <th>Số cân (kg)</th>
+              <th>Ghi chú</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {draft.records.length === 0 && (
               <tr>
-                <td colSpan={4} className="records__empty">
+                <td colSpan={5} className="records__empty">
                   Chưa có lần cân nào
                 </td>
               </tr>
             )}
-            {draft.records.map((r) => (
+            {visibleRecords.map((r) => (
               <tr key={r.weighSequence}>
                 <td>{r.weighSequence}</td>
                 <td>
@@ -263,6 +293,16 @@ export default function WeighScreen() {
                     </button>
                   )}
                 </td>
+                <td className="records__note">
+                  <input
+                    type="text"
+                    maxLength={200}
+                    value={r.note ?? ''}
+                    placeholder="—"
+                    aria-label={`Ghi chú lần ${r.weighSequence}`}
+                    onChange={(e) => draft.updateRecord(r.weighSequence, { note: e.target.value })}
+                  />
+                </td>
                 <td className="records__actions">
                   {editingSequence === r.weighSequence && (
                     <button
@@ -289,12 +329,27 @@ export default function WeighScreen() {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2}>Tổng</td>
-              <td className="records__kg">{draft.totalWeightKg.toFixed(1)}</td>
+              <td>Tổng</td>
               <td>{draft.totalBags} bao</td>
+              <td className="records__kg">{draft.totalWeightKg.toFixed(1)}</td>
+              <td />
+              <td />
             </tr>
           </tfoot>
         </table>
+
+        {hiddenRecordCount > 0 && (
+          <div className="records-toggle-bar">
+            <button
+              type="button"
+              className="records-toggle"
+              aria-expanded={showAllRecords}
+              onClick={() => setShowAllRecords((prev) => !prev)}
+            >
+              {showAllRecords ? 'Thu gọn' : 'Xem tất cả'}
+            </button>
+          </div>
+        )}
 
         <div className="manual-entry-bar">
           <button

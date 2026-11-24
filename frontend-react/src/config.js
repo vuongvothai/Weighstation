@@ -15,7 +15,10 @@ export const POLL_INTERVAL_MS = 100
 export const WEIGH_DEBOUNCE_MS = 500
 
 /** Số bao mặc định cho mỗi lần cân. */
-export const DEFAULT_BAG_COUNT = 2
+export const DEFAULT_BAG_COUNT = 1
+
+/** Số lần cân cuối cùng hiện ở màn hình cân khi chưa bật "Xem tất cả". */
+export const RECENT_RECORD_LIMIT = 3
 
 /** Khoá lưu draft trong localStorage. */
 export const DRAFT_STORAGE_KEY = 'weighstation.ticketDraft.v1'
