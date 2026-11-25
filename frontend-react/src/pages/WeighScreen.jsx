@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { createTicket, errorMessage, fetchTicket, updateTicket } from '../api/tickets'
 import { DEFAULT_BAG_COUNT, RECENT_RECORD_LIMIT } from '../config'
 import { useScaleWeight, useSpaceToWeigh } from '../hooks/useScaleWeight'
+import { useAutoCapture, useCaptureMode } from '../hooks/useAutoCapture'
 import { useTicketDraft } from '../hooks/useTicketDraft'
 
 /**
@@ -17,6 +18,7 @@ export default function WeighScreen() {
   const { ticketUuid: editingUuid } = useParams()
   const { value, stable, connected } = useScaleWeight()
   const draft = useTicketDraft()
+  const { isAuto, toggle: toggleCaptureMode } = useCaptureMode()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [savedCode, setSavedCode] = useState(null)
@@ -57,7 +59,7 @@ export default function WeighScreen() {
   }, [editingUuid, draft.loadTicket])
 
   const canCapture = connected && stable && value !== null && value > 0 && !saving
-  // Ô nhập tay mặc định thu gọn; operator mở/đóng bằng nút "Thêm thủ công".
+  // Ô nhập tay mặc định thu gọn; operator mở/đóng bằng nút "nhập tay".
   const [manualOpen, setManualOpen] = useState(false)
   const showManualEntry = manualOpen
 
@@ -117,6 +119,10 @@ export default function WeighScreen() {
   }, [editingSequence])
 
   useSpaceToWeigh(capture, canCapture)
+
+  // Auto-capture: tự ghi 1 lần cân khi mẻ cân kết thúc (số tụt từ đỉnh đã ổn định).
+  // Chỉ bật ở chế độ auto, khi đang tạo phiếu mới và chưa lưu.
+  useAutoCapture({ value, stable, connected }, capture, isAuto && canCapture && !editingUuid)
 
   const handleSave = useCallback(async () => {
     if (draft.records.length === 0) {
@@ -178,9 +184,24 @@ export default function WeighScreen() {
             Về lịch sử
           </button>
         ) : (
-          <span className={`badge ${status.cls}`}>
-            {status.icon} {status.label}
-          </span>
+          <div className="screen__status">
+            <button
+              type="button"
+              className={`mode-toggle ${isAuto ? 'is-auto' : 'is-manual'}`}
+              aria-pressed={isAuto}
+              title={
+                isAuto
+                  ? 'Đang tự động ghi khi mẻ cân kết thúc — bấm để chuyển sang nhập tay'
+                  : 'Đang nhập tay bằng phím t — bấm để chuyển sang tự động'
+              }
+              onClick={toggleCaptureMode}
+            >
+              {isAuto ? '⚙ Auto' : '⌨ Thủ công'}
+            </button>
+            <span className={`badge ${status.cls}`}>
+              {status.icon} {status.label}
+            </span>
+          </div>
         )}
       </header>
 
@@ -191,14 +212,25 @@ export default function WeighScreen() {
 
       <p className="hint" role="status">
         {canCapture ? (
-          <>
-            Nhấn <kbd>t</kbd> để ghi 1 lần cân
-            {draft.records.length > 0 && <> · đã ghi {draft.records.length} lần</>}
-          </>
+          isAuto ? (
+            <>
+              Tự động ghi khi mẻ cân kết thúc
+              {draft.records.length > 0 && <> · đã ghi {draft.records.length} lần</>}
+            </>
+          ) : (
+            <>
+              Nhấn <kbd>t</kbd> để ghi 1 lần cân
+              {draft.records.length > 0 && <> · đã ghi {draft.records.length} lần</>}
+            </>
+          )
         ) : connected ? (
-                      <>Chờ số cân ổn định, sau đó nhấn <kbd>t</kbd> để ghi</>
+          isAuto ? (
+            <>Chờ số cân ổn định — hệ thống tự ghi khi mẻ cân kết thúc</>
+          ) : (
+            <>Chờ số cân ổn định, sau đó nhấn <kbd>t</kbd> để ghi</>
+          )
         ) : (
-          <>Cân chưa kết nối — có thể thêm thủ công bên dưới</>
+          <>Cân chưa kết nối — có thể nhập tay bên dưới</>
         )}
       </p>
 
@@ -358,7 +390,7 @@ export default function WeighScreen() {
             aria-expanded={showManualEntry}
             onClick={() => setManualOpen(!showManualEntry)}
           >
-            {showManualEntry ? 'Thu gọn' : 'Thêm thủ công'}
+            {showManualEntry ? 'Thu gọn' : 'nhập tay'}
           </button>
         </div>
 

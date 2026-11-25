@@ -36,7 +36,7 @@ h1 {
 /* ===== Màn hình cân ===== */
 
 .screen {
-  max-width: 720px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 24px 16px 48px;
 }
@@ -73,6 +73,42 @@ h1 {
   background: var(--off);
 }
 
+.screen__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mode-toggle {
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.mode-toggle.is-auto {
+  background: var(--accent);
+}
+
+.mode-toggle.is-auto:hover {
+  background: var(--accent-dark);
+}
+
+.mode-toggle.is-manual {
+  background: var(--text-muted);
+}
+
+.mode-toggle.is-manual:hover {
+  background: var(--text);
+}
+
 .weight-display {
   display: flex;
   align-items: baseline;
@@ -86,8 +122,8 @@ h1 {
 
 .weight-display__value {
   font-family: var(--mono);
-  font-size: 4rem;
-  font-weight: 700;
+  font-size: 6rem;
+  font-weight: 900;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }

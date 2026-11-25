@@ -44,7 +44,7 @@ describe('WeighScreen', () => {
     renderScreen()
 
     expect(screen.getByText(/Mất kết nối cân/)).toBeTruthy()
-    expect(screen.getByText(/có thể thêm thủ công bên dưới/)).toBeTruthy()
+    expect(screen.getByText(/có thể nhập tay bên dưới/)).toBeTruthy()
     expect(screen.getByText('––.–')).toBeTruthy()
   })
 
@@ -54,9 +54,24 @@ describe('WeighScreen', () => {
     renderScreen()
 
     expect(screen.getByText(/Ổn định/)).toBeTruthy()
+    expect(screen.getByText(/Tự động ghi khi mẻ cân kết thúc/)).toBeTruthy()
+    expect(screen.getByText('124.5')).toBeTruthy()
+  })
+
+  it('mặc định ở chế độ auto và chuyển sang thủ công bằng nút', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+
+    const toggle = screen.getByRole('button', { name: /Auto/ })
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+
+    await user.click(toggle)
+
+    expect(screen.getByRole('button', { name: /Thủ công/ }).getAttribute('aria-pressed')).toBe('false')
     expect(screen.getByText(/Nhấn/)).toBeTruthy()
     expect(screen.getByText('t')).toBeTruthy()
-    expect(screen.getByText('124.5')).toBeTruthy()
   })
 
   it('hiển thị badge dao động khi chưa stable', () => {
@@ -114,7 +129,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.click(screen.getByRole('button', { name: /Thêm thủ công/ }))
+    await user.click(screen.getByRole('button', { name: /nhập tay/ }))
     await user.type(screen.getByLabelText('Số cân thủ công (kg)'), '85.5')
     await user.click(screen.getByRole('button', { name: 'Thêm lần cân' }))
 
@@ -128,7 +143,7 @@ describe('WeighScreen', () => {
     renderScreen()
 
     expect(screen.queryByLabelText('Số cân thủ công (kg)')).toBeNull()
-    expect(screen.getByRole('button', { name: /Thêm thủ công/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /nhập tay/ })).toBeTruthy()
   })
 
   it('báo lỗi khi thêm số cân thủ công không hợp lệ', async () => {
@@ -136,7 +151,7 @@ describe('WeighScreen', () => {
     const user = userEvent.setup()
 
     renderScreen()
-    await user.click(screen.getByRole('button', { name: /Thêm thủ công/ }))
+    await user.click(screen.getByRole('button', { name: /nhập tay/ }))
     await user.click(screen.getByRole('button', { name: 'Thêm lần cân' }))
 
     expect(await screen.findByText('Nhập số cân lớn hơn 0 kg.')).toBeTruthy()
@@ -285,23 +300,23 @@ describe('WeighScreen', () => {
     expect(screen.queryByRole('button', { name: 'Thêm lần cân' })).toBeNull()
   })
 
-  it('nút Thêm thủ công mở ô nhập khi cân đang hoạt động', async () => {
+  it('nút nhập tay mở ô nhập khi cân đang hoạt động', async () => {
     useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
     const user = userEvent.setup()
 
     renderScreen()
-    await user.click(screen.getByRole('button', { name: /Thêm thủ công/ }))
+    await user.click(screen.getByRole('button', { name: /nhập tay/ }))
 
     expect(screen.getByLabelText('Số cân thủ công (kg)')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Thêm lần cân' })).toBeTruthy()
   })
 
-  it('nút Thêm thủ công đóng lại ô nhập', async () => {
+  it('nút nhập tay đóng lại ô nhập', async () => {
     useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
     const user = userEvent.setup()
 
     renderScreen()
-    await user.click(screen.getByRole('button', { name: 'Thêm thủ công' }))
+    await user.click(screen.getByRole('button', { name: 'nhập tay' }))
     await user.click(screen.getByRole('button', { name: 'Thu gọn' }))
 
     expect(screen.queryByLabelText('Số cân thủ công (kg)')).toBeNull()
