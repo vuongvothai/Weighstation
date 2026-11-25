@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.vuong.vo.dto.RecordInsertRequest;
 import com.vuong.vo.dto.TicketCreateRequest;
 import com.vuong.vo.dto.TicketResponse;
 import com.vuong.vo.dto.TicketSummaryResponse;
@@ -39,6 +40,19 @@ public class TicketController {
 		TicketResponse created = service.createTicket(request);
 		return ResponseEntity
 				.created(URI.create("/api/tickets/" + created.ticketUuid()))
+				.body(created);
+	}
+
+	/**
+	 * Đẩy 1 lần cân xuống DB ngay khi operator ghi (INSERT realtime).
+	 */
+	@PostMapping("/{ticketUuid}/records")
+	public ResponseEntity<TicketResponse> insertRecord(
+			@PathVariable String ticketUuid,
+			@Valid @RequestBody RecordInsertRequest request) {
+		TicketResponse created = service.insertRecord(ticketUuid, request);
+		return ResponseEntity
+				.created(URI.create("/api/tickets/" + ticketUuid))
 				.body(created);
 	}
 

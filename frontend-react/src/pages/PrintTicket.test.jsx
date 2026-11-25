@@ -15,7 +15,7 @@ const TICKET = {
   ticketCode: 'CF-0042',
   customerName: 'Nguyen Van A',
   records: [
-    { weighSequence: 1, bagCount: 2, weightKg: 124.5, weighedAt: '2026-11-21T19:55:12+07:00' },
+    { weighSequence: 1, bagCount: 2, weightKg: 124.5, note: 'bao ẩm', weighedAt: '2026-11-21T19:55:12+07:00' },
     { weighSequence: 2, bagCount: 2, weightKg: 126.0, weighedAt: '2026-11-21T19:56:30+07:00' },
     { weighSequence: 3, bagCount: 2, weightKg: 122.8, weighedAt: '2026-11-21T19:57:45+07:00' },
     { weighSequence: 4, bagCount: 1, weightKg: 58.5, weighedAt: '2026-11-21T19:58:50+07:00' },
@@ -69,6 +69,15 @@ describe('PrintTicket', () => {
     renderPage()
 
     expect(await screen.findByText('21/11/26 19:55')).toBeTruthy()
+  })
+
+  it('hiển thị cột ghi chú của lần cân', async () => {
+    fetchTicket.mockResolvedValue(TICKET)
+
+    renderPage()
+
+    expect(await screen.findByText('Ghi chú')).toBeTruthy()
+    expect(screen.getByText('bao ẩm')).toBeTruthy()
   })
 
   it('gọi đúng endpoint theo ticketUuid trên URL', async () => {

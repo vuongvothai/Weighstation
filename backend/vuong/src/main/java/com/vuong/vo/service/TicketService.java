@@ -8,13 +8,16 @@ import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vuong.vo.dto.RecordInsertRequest;
 import com.vuong.vo.dto.TicketCreateRequest;
 import com.vuong.vo.dto.TicketResponse;
 import com.vuong.vo.dto.TicketSummaryResponse;
 import com.vuong.vo.dto.TicketUpdateRequest;
 import com.vuong.vo.dto.WeighRecordRequest;
 import com.vuong.vo.dto.WeighRecordResponse;
+import com.vuong.vo.entity.WeighAuditLog;
 import com.vuong.vo.entity.WeighRecord;
+import com.vuong.vo.repository.WeighAuditLogRepository;
 import com.vuong.vo.repository.WeighRecordRepository;
 
 /**
@@ -31,9 +34,11 @@ public class TicketService {
 	private static final int CODE_SEQ_WIDTH = 4;
 
 	private final WeighRecordRepository repository;
+	private final WeighAuditLogRepository auditLogRepository;
 
-	public TicketService(WeighRecordRepository repository) {
+	public TicketService(WeighRecordRepository repository, WeighAuditLogRepository auditLogRepository) {
 		this.repository = repository;
+		this.auditLogRepository = auditLogRepository;
 	}
 
 	/**
@@ -52,7 +57,43 @@ public class TicketService {
 		List<WeighRecord> saved = repository.saveAll(
 				toEntities(ticketUuid, ticketCode, request.customerName(), request.records()));
 
+		saved.forEach(r -> audit(r, "INSERT", null, toJson(r)));
 		return toResponse(saved.get(0).getId(), ticketUuid, ticketCode, request.customerName(), saved);
+	}
+
+	/**
+	 * Đẩy 1 lần cân xuống DB ngay khi operator ghi (INSERT realtime).
+	 *
+	 * <p>Nếu phiếu chưa tồn tại, sinh {@code ticketCode} mới. Nếu đã tồn tại,
+	 * giữ nguyên mã và cập nhật tên khách cho các bản ghi của phiếu. Ghi 1 dòng
+	 * audit {@code INSERT}. Gọi lại cùng {@code (ticketUuid, weighSequence)} sẽ
+	 * ghi đè (upsert) và audit {@code UPDATE}.
+	 *
+	 * @throws DuplicateRecordException nếu đã tồn tại lần cân cùng thứ tự
+	 */
+	@Transactional
+	public TicketResponse insertRecord(String ticketUuid, RecordInsertRequest request) {
+		List<WeighRecord> existing = repository.findByTicketUuidOrderByWeighSequenceAsc(ticketUuid);
+		String ticketCode = existing.isEmpty()
+				? nextTicketCode()
+				: existing.get(0).getTicketCode();
+
+		WeighRecordRequest r = request.record();
+		WeighRecord entity = new WeighRecord(
+				ticketUuid,
+				ticketCode,
+				request.customerName(),
+				r.weighSequence(),
+				r.bagCount(),
+				r.weightKg(),
+				null,
+				r.weighedAt().toLocalDateTime());
+
+		WeighRecord saved = repository.saveAndFlush(entity);
+		audit(saved, "INSERT", null, toJson(saved));
+
+		List<WeighRecord> all = repository.findByTicketUuidOrderByWeighSequenceAsc(ticketUuid);
+		return toResponse(saved.getId(), ticketUuid, ticketCode, request.customerName(), all);
 	}
 
 	/**
@@ -94,11 +135,13 @@ public class TicketService {
 		}
 
 		String ticketCode = existing.get(0).getTicketCode();
+		existing.forEach(r -> audit(r, "DELETE", toJson(r), null));
 		repository.deleteAll(existing);
 		repository.flush();
 
 		List<WeighRecord> saved = repository.saveAll(
 				toEntities(ticketUuid, ticketCode, request.customerName(), request.records()));
+		saved.forEach(r -> audit(r, "INSERT", null, toJson(r)));
 
 		return toResponse(saved.get(0).getId(), ticketUuid, ticketCode, request.customerName(), saved);
 	}
@@ -114,6 +157,7 @@ public class TicketService {
 		if (existing.isEmpty()) {
 			throw new TicketNotFoundException(ticketUuid);
 		}
+		existing.forEach(r -> audit(r, "DELETE", toJson(r), null));
 		repository.deleteAll(existing);
 	}
 
@@ -133,6 +177,32 @@ public class TicketService {
 						null,
 						r.weighedAt().toLocalDateTime()))
 				.toList();
+	}
+
+	/**
+	 * Ghi 1 dòng audit append-only. {@code oldValues}/{@code newValues} là JSON
+	 * do {@link #toJson} sinh; một trong hai là {@code null} tùy hành động.
+	 */
+	private void audit(WeighRecord r, String action, String oldValues, String newValues) {
+		auditLogRepository.save(new WeighAuditLog(
+				r.getTicketUuid(), r.getWeighSequence(), action, oldValues, newValues));
+	}
+
+	/**
+	 * Serialize gọn 1 lần cân để lưu vào cột JSON của audit log.
+	 */
+	private String toJson(WeighRecord r) {
+		return "{"
+				+ "\"weighSequence\":" + r.getWeighSequence()
+				+ ",\"bagCount\":" + r.getBagCount()
+				+ ",\"weightKg\":" + r.getWeightKg()
+				+ ",\"customerName\":\"" + escape(r.getCustomerName()) + "\""
+				+ ",\"weighedAt\":\"" + r.getWeighedAt() + "\""
+				+ "}";
+	}
+
+	private String escape(String s) {
+		return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
 	}
 
 	/**

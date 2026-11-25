@@ -78,6 +78,13 @@
   text-align: right;
 }
 
+.weigh-table td.note-col {
+  font-size: 10px;
+  text-align: left;
+  padding: 3px 3px;
+  word-break: break-word;
+}
+
 .summary {
   padding-top: 5px;
   border-top: 1px dashed #000;

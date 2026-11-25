@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_BAG_COUNT, DRAFT_STORAGE_KEY } from '../config'
 
 /**
@@ -61,6 +61,9 @@ export function useTicketDraft() {
     const stored = readStoredDraft()
     return stored.ticketUuid ? stored : { ...stored, ticketUuid: newTicketUuid() }
   })
+  // Giữ bản draft mới nhất để addRecord tính weighSequence đồng bộ.
+  const draftRef = useRef(draft)
+  draftRef.current = draft
 
   useEffect(() => {
     try {
@@ -68,6 +71,7 @@ export function useTicketDraft() {
     } catch {
       // localStorage đầy hoặc bị chặn — draft vẫn còn trong memory.
     }
+    draftRef.current = draft
   }, [draft])
 
   const setCustomerName = useCallback((customerName) => {
@@ -75,16 +79,18 @@ export function useTicketDraft() {
   }, [])
 
   const addRecord = useCallback((weightKg, bagCount = DEFAULT_BAG_COUNT) => {
-    setDraft((prev) => {
-      const nextSequence = prev.records.reduce((max, r) => Math.max(max, r.weighSequence), 0) + 1
-      return {
-        ...prev,
-        records: [
-          ...prev.records,
-          { weighSequence: nextSequence, bagCount, weightKg, weighedAt: new Date().toISOString() },
-        ],
-      }
-    })
+    // Tính record đồng bộ (không trong updater) để trả về ngay cho FE đẩy BE.
+    const created = {
+      weighSequence: draftRef.current.records.reduce((max, r) => Math.max(max, r.weighSequence), 0) + 1,
+      bagCount,
+      weightKg,
+      weighedAt: new Date().toISOString(),
+    }
+    setDraft((prev) => ({
+      ...prev,
+      records: [...prev.records, created],
+    }))
+    return created
   }, [])
 
   const updateRecord = useCallback((weighSequence, patch) => {

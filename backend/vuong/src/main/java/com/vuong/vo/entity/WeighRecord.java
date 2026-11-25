@@ -51,6 +51,9 @@ public class WeighRecord {
 	@Column(name = "operator_name", length = 150)
 	private String operatorName;
 
+	@Column(name = "evidence_image_path", length = 255)
+	private String evidenceImagePath;
+
 	@Column(name = "weighed_at", nullable = false)
 	private LocalDateTime weighedAt;
 
@@ -157,6 +160,14 @@ public class WeighRecord {
 
 	public void setOperatorName(String operatorName) {
 		this.operatorName = operatorName;
+	}
+
+	public String getEvidenceImagePath() {
+		return evidenceImagePath;
+	}
+
+	public void setEvidenceImagePath(String evidenceImagePath) {
+		this.evidenceImagePath = evidenceImagePath;
 	}
 
 	public LocalDateTime getWeighedAt() {

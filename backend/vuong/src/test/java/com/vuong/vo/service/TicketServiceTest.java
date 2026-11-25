@@ -13,10 +13,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vuong.vo.dto.RecordInsertRequest;
 import com.vuong.vo.dto.TicketCreateRequest;
 import com.vuong.vo.dto.TicketResponse;
 import com.vuong.vo.dto.TicketUpdateRequest;
 import com.vuong.vo.dto.WeighRecordRequest;
+import com.vuong.vo.entity.WeighAuditLog;
+import com.vuong.vo.repository.WeighAuditLogRepository;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -25,6 +28,9 @@ class TicketServiceTest {
 
 	@Autowired
 	private TicketService service;
+
+	@Autowired
+	private WeighAuditLogRepository auditLogRepository;
 
 	private static final OffsetDateTime T1 = OffsetDateTime.parse("2026-11-21T19:55:12+07:00");
 	private static final OffsetDateTime T2 = OffsetDateTime.parse("2026-11-21T19:56:30+07:00");
@@ -121,5 +127,49 @@ class TicketServiceTest {
 	void delete_ticket_missing_uuid_throws_not_found() {
 		assertThatThrownBy(() -> service.deleteTicket("12345678-8888-4888-8888-888888888888"))
 				.isInstanceOf(TicketNotFoundException.class);
+	}
+
+	@Test
+	void insert_record_persists_single_record_and_audits_insert() {
+		String uuid = "aaaa1111-0000-4000-8000-000000000001";
+
+		TicketResponse response = service.insertRecord(
+				uuid,
+				new RecordInsertRequest("Khách A", new WeighRecordRequest(1, 2, new BigDecimal("50.00"), T1)));
+
+		assertThat(response.records()).hasSize(1);
+		assertThat(response.ticketCode()).startsWith("CF-");
+
+		List<WeighAuditLog> logs = auditLogRepository.findByTicketUuidOrderByChangedAtDesc(uuid);
+		assertThat(logs).hasSize(1);
+		assertThat(logs.get(0).getAction()).isEqualTo("INSERT");
+		assertThat(logs.get(0).getNewValues()).contains("\"weighSequence\":1");
+	}
+
+	@Test
+	void replace_ticket_writes_delete_and_insert_audit() {
+		String uuid = "aaaa2222-0000-4000-8000-000000000002";
+		service.createTicket(sampleRequest(uuid));
+		long before = auditLogRepository.count();
+
+		service.replaceTicket(
+				uuid,
+				new TicketUpdateRequest(
+						"Khách",
+						List.of(new WeighRecordRequest(1, 1, new BigDecimal("10.00"), T1))));
+
+		// 3 INSERT (create) + 3 DELETE + 1 INSERT (replace) = 7 dòng, hơn mốc before.
+		assertThat(auditLogRepository.count()).isEqualTo(before + 4);
+	}
+
+	@Test
+	void delete_ticket_writes_delete_audit() {
+		String uuid = "aaaa3333-0000-4000-8000-000000000003";
+		service.createTicket(sampleRequest(uuid));
+
+		service.deleteTicket(uuid);
+
+		List<WeighAuditLog> logs = auditLogRepository.findByTicketUuidOrderByChangedAtDesc(uuid);
+		assertThat(logs).anyMatch(l -> l.getAction().equals("DELETE"));
 	}
 }

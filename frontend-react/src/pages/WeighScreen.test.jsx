@@ -7,6 +7,7 @@ import WeighScreen from './WeighScreen'
 vi.mock('../api/tickets', () => ({
   createTicket: vi.fn(),
   fetchTicket: vi.fn(),
+  insertRecord: vi.fn(),
   updateTicket: vi.fn(),
   errorMessage: (err, fallback) => err?.message ?? fallback,
 }))
@@ -16,7 +17,7 @@ vi.mock('../hooks/useScaleWeight', async (importOriginal) => {
   return { ...actual, useScaleWeight: vi.fn() }
 })
 
-import { createTicket, fetchTicket, updateTicket } from '../api/tickets'
+import { createTicket, fetchTicket, insertRecord, updateTicket } from '../api/tickets'
 import { useScaleWeight } from '../hooks/useScaleWeight'
 
 function renderScreen(path = '/tram-can') {
@@ -36,6 +37,7 @@ describe('WeighScreen', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+    insertRecord.mockResolvedValue({})
   })
 
   it('hiển thị badge mất kết nối khi agent offline', () => {
@@ -421,6 +423,67 @@ describe('WeighScreen', () => {
     await user.keyboard('t')
 
     expect(await screen.findByLabelText(/Số bao lần 1/)).toHaveProperty('value', '1')
+  })
+
+  it('đẩy lần cân xuống BE ngay khi ghi (INSERT realtime)', async () => {
+    useScaleWeight.mockReturnValue({ value: null, stable: false, connected: false })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.click(screen.getByRole('button', { name: /nhập tay/ }))
+    await user.type(screen.getByLabelText('Số cân thủ công (kg)'), '85.5')
+    await user.click(screen.getByRole('button', { name: 'Thêm lần cân' }))
+
+    await waitFor(() => expect(insertRecord).toHaveBeenCalledTimes(1))
+    const [uuid, payload] = insertRecord.mock.calls[0]
+    expect(typeof uuid).toBe('string')
+    expect(payload.record).toMatchObject({ weighSequence: 1, bagCount: 1, weightKg: 85.5 })
+  })
+
+  it('ẩn nút Lịch sử và Phiếu mới ở màn chỉnh sửa', async () => {
+    useScaleWeight.mockReturnValue({ value: null, stable: false, connected: false })
+    fetchTicket.mockResolvedValue({
+      ticketUuid: 'uuid-1',
+      ticketCode: 'CF-0007',
+      customerName: 'Khách Cũ',
+      records: [{ weighSequence: 1, bagCount: 2, weightKg: 100, weighedAt: '2026-11-21T19:55:12+07:00' }],
+    })
+
+    renderScreen('/chinh-sua/uuid-1')
+
+    expect(await screen.findByText(/Chỉnh sửa phiếu CF-0007/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Lịch sử' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Phiếu mới' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Lưu thay đổi' })).toBeTruthy()
+  })
+
+  it('báo chưa đồng bộ BE khi đẩy lần cân thất bại', async () => {
+    useScaleWeight.mockReturnValue({ value: null, stable: false, connected: false })
+    insertRecord.mockRejectedValue(new Error('network'))
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.click(screen.getByRole('button', { name: /nhập tay/ }))
+    await user.type(screen.getByLabelText('Số cân thủ công (kg)'), '85.5')
+    await user.click(screen.getByRole('button', { name: 'Thêm lần cân' }))
+
+    expect(await screen.findByText(/Chưa đồng bộ được xuống máy chủ/)).toBeTruthy()
+  })
+
+  it('ghi mốc "đã sửa" vào ghi chú lần cân khi sửa số cân', async () => {
+    useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
+    const user = userEvent.setup()
+
+    renderScreen()
+    await user.keyboard('t')
+
+    await user.click(await screen.findByRole('button', { name: 'Sửa số cân lần 1' }))
+    const editInput = screen.getByLabelText('Số cân lần 1')
+    await user.clear(editInput)
+    await user.type(editInput, '200')
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByLabelText('Ghi chú lần 1')).toHaveProperty('value', expect.stringContaining('đã sửa số cân'))
   })
 
   it('ghi chú từng lần cân được lưu vào phiếu', async () => {

@@ -15,6 +15,18 @@ export async function createTicket(payload) {
 }
 
 /**
+ * Đẩy 1 lần cân xuống DB ngay khi operator ghi (INSERT realtime).
+ *
+ * @param {string} ticketUuid
+ * @param {{customerName:string, record:object}} payload
+ * @returns {Promise<object>} phiếu sau khi thêm (có ticketCode, records, totals)
+ */
+export async function insertRecord(ticketUuid, payload) {
+  const res = await http.post(`/api/tickets/${ticketUuid}/records`, payload)
+  return res.data
+}
+
+/**
  * Danh sách phiếu đã lưu — dùng cho màn hình lịch sử.
  *
  * @returns {Promise<Array<{ticketUuid:string, ticketCode:string, customerName:string, weighedAt:string}>>}

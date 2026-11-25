@@ -92,9 +92,10 @@ export default function PrintTicket() {
         <table className="weigh-table">
           <thead>
             <tr>
-              <th style={{ width: '24%' }}>Lần</th>
-              <th style={{ width: '26%' }}>Số bao</th>
-              <th style={{ width: '50%' }}>Số cân (kg)</th>
+              <th style={{ width: '16%' }}>Lần</th>
+              <th style={{ width: '18%' }}>Số bao</th>
+              <th style={{ width: '30%' }}>Số cân (kg)</th>
+              <th style={{ width: '36%' }}>Ghi chú</th>
             </tr>
           </thead>
           <tbody>
@@ -103,6 +104,7 @@ export default function PrintTicket() {
                 <td>{r.weighSequence}</td>
                 <td>{r.bagCount}</td>
                 <td className="kg-col">{r.weightKg.toFixed(1)}</td>
+                <td className="note-col">{r.note || '—'}</td>
               </tr>
             ))}
           </tbody>

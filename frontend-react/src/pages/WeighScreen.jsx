@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createTicket, errorMessage, fetchTicket, updateTicket } from '../api/tickets'
+import { createTicket, errorMessage, fetchTicket, insertRecord, updateTicket } from '../api/tickets'
 import { DEFAULT_BAG_COUNT, RECENT_RECORD_LIMIT } from '../config'
 import { useScaleWeight, useSpaceToWeigh } from '../hooks/useScaleWeight'
 import { useAutoCapture, useCaptureMode } from '../hooks/useAutoCapture'
 import { useTicketDraft } from '../hooks/useTicketDraft'
+
+/**
+ * Nối thêm 1 mốc truy vết vào ghi chú của lần cân (giữ lại ghi chú cũ).
+ */
+function appendNote(existing, marker) {
+  const base = (existing ?? '').trim()
+  return base ? `${base} · ${marker}` : marker
+}
 
 /**
  * Màn hình `/tram-can` — hiển thị số cân realtime, ghi lần cân bằng phím `t`,
@@ -23,6 +31,9 @@ export default function WeighScreen() {
   const [error, setError] = useState(null)
   const [savedCode, setSavedCode] = useState(null)
   const [manualWeight, setManualWeight] = useState('')
+  // Cảnh báo khi có lần cân chưa đẩy được xuống BE (mất mạng) — draft vẫn còn
+  // ở localStorage và sẽ đồng bộ lại khi "Lưu phiếu".
+  const [unsynced, setUnsynced] = useState(false)
   // Số bao tự điền cho lần cân kế tiếp; để trống thì dùng DEFAULT_BAG_COUNT.
   const [defaultBagCount, setDefaultBagCount] = useState(String(DEFAULT_BAG_COUNT))
   // Mặc định chỉ hiện 3 lần cân cuối; bật cờ này để xem toàn bộ.
@@ -69,12 +80,29 @@ export default function WeighScreen() {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_BAG_COUNT
   }, [defaultBagCount])
 
+  // Đẩy 1 lần cân vừa ghi xuống BE ngay (INSERT realtime) để không mất khi
+  // cúp điện giữa chừng. Lỗi đẩy (mất mạng) thì báo operator biết — draft vẫn
+  // còn ở FE và sẽ được đồng bộ lại khi "Lưu phiếu".
+  const pushRecord = useCallback(
+    (record, customerName) => {
+      if (!record) return
+      insertRecord(draft.ticketUuid, {
+        customerName: (customerName ?? draft.customerName ?? '').trim() || 'Khách',
+        record,
+      })
+        .then(() => setUnsynced(false))
+        .catch(() => setUnsynced(true))
+    },
+    [draft.ticketUuid, draft.customerName],
+  )
+
   const capture = useCallback(() => {
     if (!canCapture) return
     setError(null)
     setSavedCode(null)
-    draft.addRecord(value, nextBagCount)
-  }, [canCapture, value, nextBagCount, draft])
+    const record = draft.addRecord(value, nextBagCount)
+    pushRecord(record)
+  }, [canCapture, value, nextBagCount, draft, pushRecord])
 
   const addManualRecord = useCallback((event) => {
     event.preventDefault()
@@ -85,9 +113,10 @@ export default function WeighScreen() {
     }
     setError(null)
     setSavedCode(null)
-    draft.addRecord(weight, nextBagCount)
+    const record = draft.addRecord(weight, nextBagCount)
+    pushRecord(record)
     setManualWeight('')
-  }, [manualWeight, nextBagCount, draft])
+  }, [manualWeight, nextBagCount, draft, pushRecord])
 
   const startEdit = useCallback((record) => {
     setEditingSequence(record.weighSequence)
@@ -107,7 +136,10 @@ export default function WeighScreen() {
     }
     setError(null)
     setSavedCode(null)
-    draft.updateRecord(weighSequence, { weightKg: Math.round(weight * 10) / 10 })
+    const rounded = Math.round(weight * 10) / 10
+    const current = draft.records.find((r) => r.weighSequence === weighSequence)
+    const note = appendNote(current?.note, `đã sửa số cân ${current?.weightKg?.toFixed?.(1) ?? ''} → ${rounded.toFixed(1)}`)
+    draft.updateRecord(weighSequence, { weightKg: rounded, note })
     cancelEdit()
   }, [editWeight, draft, cancelEdit])
 
@@ -145,10 +177,12 @@ export default function WeighScreen() {
       if (editingUuid) {
         await updateTicket(editingUuid, payload)
         setSavedCode(draft.ticketCode ?? null)
+        setUnsynced(false)
         navigate('/lich-su')
       } else {
         const saved = await createTicket({ ticketUuid: draft.ticketUuid, ...payload })
         setSavedCode(saved.ticketCode)
+        setUnsynced(false)
         draft.reset()
       }
     } catch (err) {
@@ -414,18 +448,27 @@ export default function WeighScreen() {
         )}
 
         {error && <p className="error">{error}</p>}
+        {unsynced && !error && (
+          <p className="error">
+            Chưa đồng bộ được xuống máy chủ (mất kết nối). Dữ liệu vẫn còn trên máy này — bấm “Lưu phiếu” để thử đẩy lại.
+          </p>
+        )}
         {savedCode && <p className="success">Đã lưu phiếu {savedCode}</p>}
 
         <div className="actions">
           <button type="button" className="btn btn--primary" disabled={saving} onClick={handleSave}>
             {saving ? 'Đang lưu...' : editingUuid ? 'Lưu thay đổi' : 'Lưu phiếu'}
           </button>
-          <button type="button" className="btn" onClick={() => navigate('/lich-su')}>
-            Lịch sử
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={draft.reset}>
-            Phiếu mới
-          </button>
+          {!editingUuid && (
+            <>
+              <button type="button" className="btn" onClick={() => navigate('/lich-su')}>
+                Lịch sử
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={draft.reset}>
+                Phiếu mới
+              </button>
+            </>
+          )}
         </div>
       </section>
     </main>
