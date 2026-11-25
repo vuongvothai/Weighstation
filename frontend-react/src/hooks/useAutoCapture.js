@@ -1,106 +1,101 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CAPTURE_MODE_STORAGE_KEY, ZERO_CONFIRM_POLLS, ZERO_THRESHOLD_KG } from '../config'
+import {
+  AUTO_TARE_WINDOW_KG,
+  CAPTURE_MODE_STORAGE_KEY,
+  ZERO_CONFIRM_POLLS,
+  ZERO_THRESHOLD_KG,
+} from '../config'
 
 /**
- * Theo dõi đỉnh của một mẻ cân để tự động ghi khi mẻ kết thúc.
+ * Tự động ghi 1 lần cân theo mô hình "1 mẻ = 1 dòng, chốt khi về 0".
  *
- * Ý tưởng: xe chở hàng lên bàn cân → số tăng dần tới giá trị cao nhất (peak),
- * hàng được dỡ → số bắt đầu giảm. Khi peak đã ổn định (đứng yên đủ lâu) và số
- * hiện tại tụt xuống dưới peak, coi như mẻ cân đã xong và ghi 1 lần.
+ * Trong 1 mẻ (chưa về 0), mỗi lần số **ổn định** ta cập nhật:
+ * - `đỉnh` = giá trị ổn định cao nhất,
+ * - `minInWindow` = giá trị ổn định nhỏ nhất trong [đỉnh - AUTO_TARE_WINDOW_KG, đỉnh].
  *
- * Máy trạng thái:
- *
- * ```mermaid
- * stateDiagram-v2
- *   [*] --> Idle
- *   Idle --> Rising: value > ZERO_THRESHOLD
- *   Rising --> Rising: value tăng / chưa stable
- *   Rising --> PeakStable: value == peak && stable
- *   PeakStable --> PeakStable: value == peak
- *   PeakStable --> Falling: value < peak
- *   Falling --> Falling: chưa stable
- *   Falling --> [*]: stable → onCapture(peak)
- *   PeakStable --> Idle: value ≈ 0 (reset)
- *   Falling --> Idle: value ≈ 0 (reset)
- * ```
+ * `onUpdate(minInWindow)` được gọi mỗi lần ổn định để FE hiện/ghi đè 1 dòng
+ * draft realtime. Khi cân **về 0** đủ `ZERO_CONFIRM_POLLS` nhịp, `onCapture`
+ * chạy đúng 1 lần với `minInWindow` để chốt dòng đó xuống BE, rồi reset chờ mẻ
+ * mới. Nhờ vậy 2 bao cân 1 lần chỉ ra 1 dòng.
  *
  * @param {{ value: number|null, stable: boolean, connected: boolean }} scale
- * @param {(weightKg: number) => void} onCapture
+ * @param {(weightKg: number) => void} onCapture chốt 1 dòng khi về 0
  * @param {boolean} enabled
+ * @param {(weightKg: number) => void} [onUpdate] ghi đè dòng draft mỗi lần ổn định
  */
-export function useAutoCapture(scale, onCapture, enabled = true) {
+export function useAutoCapture(scale, onCapture, enabled = true, onUpdate) {
   const { value, stable, connected } = scale
-  const [phase, setPhase] = useState('idle')
-  const peakRef = useRef(null)
-  const zeroCountRef = useRef(0)
+  const [, forceRender] = useState(0)
+  // Đỉnh = giá trị ổn định cao nhất; minInWindow = giá trị ổn định nhỏ nhất
+  // trong [đỉnh - AUTO_TARE_WINDOW_KG, đỉnh].
+  const stablePeakRef = useRef(null)
+  const minInWindowRef = useRef(null)
+  const [zeroCount, setZeroCount] = useState(0)
+  const committedRef = useRef(false)
   const handlerRef = useRef(onCapture)
+  const updateHandlerRef = useRef(onUpdate)
 
   useEffect(() => {
     handlerRef.current = onCapture
-  }, [onCapture])
+    updateHandlerRef.current = onUpdate
+  }, [onCapture, onUpdate])
 
   const reset = useCallback(() => {
-    peakRef.current = null
-    zeroCountRef.current = 0
-    setPhase('idle')
+    stablePeakRef.current = null
+    minInWindowRef.current = null
+    setZeroCount(0)
+    committedRef.current = false
+    forceRender((n) => n + 1)
   }, [])
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || !connected || typeof value !== 'number') {
       reset()
       return
     }
 
-    // Chưa kết nối hoặc chưa có số: coi như idle, không làm gì.
-    if (!connected || typeof value !== 'number') {
-      reset()
-      return
-    }
-
-    // Cân đã về 0: xác nhận vài vòng rồi reset để chờ mẻ mới.
+    // Cân về 0: xác nhận vài nhịp rồi chốt giá trị nhỏ nhất trong cửa sổ.
     if (value <= ZERO_THRESHOLD_KG) {
-      zeroCountRef.current += 1
-      if (zeroCountRef.current >= ZERO_CONFIRM_POLLS) reset()
-      return
-    }
-    zeroCountRef.current = 0
-
-    if (phase === 'idle') {
-      peakRef.current = value
-      setPhase('rising')
-      return
-    }
-
-    if (phase === 'rising') {
-      if (value > peakRef.current) {
-        peakRef.current = value
+      if (stablePeakRef.current === null || committedRef.current) {
+        setZeroCount(0)
         return
       }
-      if (value === peakRef.current && stable) setPhase('peakStable')
-      return
-    }
-
-    if (phase === 'peakStable') {
-      if (value === peakRef.current) return
-      if (value > peakRef.current) {
-        // Số tiếp tục tăng: cập nhật đỉnh mới.
-        peakRef.current = value
-        setPhase('rising')
-        return
+      const next = zeroCount + 1
+      setZeroCount(next)
+      if (next >= ZERO_CONFIRM_POLLS) {
+        const result = minInWindowRef.current ?? stablePeakRef.current
+        reset()
+        committedRef.current = true
+        if (result !== null && result > 0) handlerRef.current?.(result)
       }
-      setPhase('falling')
       return
     }
+    setZeroCount(0)
+    // Mẻ mới bắt đầu (số đã vượt 0) → cho phép chốt lại ở lần về 0 sau.
+    committedRef.current = false
 
-    if (phase === 'falling') {
-      if (!stable) return
-      const peak = peakRef.current
-      reset()
-      if (peak !== null && peak > 0) handlerRef.current?.(peak)
+    // Trong mẻ: chỉ xử lý khi số ổn định.
+    if (stable) {
+      const peak = stablePeakRef.current
+      if (peak === null || value > peak) {
+        // Đỉnh ổn định mới → cửa sổ dịch lên, lấy chính giá trị này làm min.
+        stablePeakRef.current = value
+        minInWindowRef.current = value
+      } else if (value >= peak - AUTO_TARE_WINDOW_KG) {
+        // Nằm trong cửa sổ → cập nhật giá trị nhỏ nhất.
+        minInWindowRef.current = Math.min(minInWindowRef.current ?? value, value)
+      }
+      const result = minInWindowRef.current ?? stablePeakRef.current
+      forceRender((n) => n + 1)
+      updateHandlerRef.current?.(result)
     }
-  }, [value, stable, connected, enabled, phase, reset])
+  }, [value, stable, connected, enabled, zeroCount, reset])
 
-  return { phase, peak: peakRef.current, reset }
+  return {
+    phase: stablePeakRef.current === null ? 'idle' : 'weighing',
+    peak: minInWindowRef.current ?? stablePeakRef.current,
+    reset,
+  }
 }
 
 function readStoredMode() {

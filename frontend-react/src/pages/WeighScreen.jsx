@@ -5,6 +5,7 @@ import { DEFAULT_BAG_COUNT, RECENT_RECORD_LIMIT } from '../config'
 import { useScaleWeight, useSpaceToWeigh } from '../hooks/useScaleWeight'
 import { useAutoCapture, useCaptureMode } from '../hooks/useAutoCapture'
 import { useTicketDraft } from '../hooks/useTicketDraft'
+import { useFeedbackSound } from '../hooks/useFeedbackSound'
 
 /**
  * Nối thêm 1 mốc truy vết vào ghi chú của lần cân (giữ lại ghi chú cũ).
@@ -26,6 +27,7 @@ export default function WeighScreen() {
   const { ticketUuid: editingUuid } = useParams()
   const { value, stable, connected } = useScaleWeight()
   const draft = useTicketDraft()
+  const { ting, unlock } = useFeedbackSound()
   const { isAuto, toggle: toggleCaptureMode } = useCaptureMode()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -69,6 +71,17 @@ export default function WeighScreen() {
     }
   }, [editingUuid, draft.loadTicket])
 
+  // Mở khóa Web Audio ở tương tác đầu tiên (trình duyệt chặn autoplay).
+  useEffect(() => {
+    const handler = () => unlock()
+    window.addEventListener('pointerdown', handler, { once: true })
+    window.addEventListener('keydown', handler, { once: true })
+    return () => {
+      window.removeEventListener('pointerdown', handler)
+      window.removeEventListener('keydown', handler)
+    }
+  }, [unlock])
+
   const canCapture = connected && stable && value !== null && value > 0 && !saving
   // Ô nhập tay mặc định thu gọn; operator mở/đóng bằng nút "nhập tay".
   const [manualOpen, setManualOpen] = useState(false)
@@ -96,13 +109,23 @@ export default function WeighScreen() {
     [draft.ticketUuid, draft.customerName],
   )
 
+  // Thêm 1 dòng vào draft + đẩy BE. Dùng chung cho manual (phím t / nhập tay)
+  // và auto (chốt khi về 0). `weightKg` truyền tường minh vì lúc auto chốt thì
+  // số cân đã về 0, không còn là `value` hiện tại.
+  const commitRecord = useCallback(
+    (weightKg) => {
+      setError(null)
+      setSavedCode(null)
+      const record = draft.addRecord(weightKg, nextBagCount)
+      pushRecord(record)
+    },
+    [nextBagCount, draft, pushRecord],
+  )
+
   const capture = useCallback(() => {
     if (!canCapture) return
-    setError(null)
-    setSavedCode(null)
-    const record = draft.addRecord(value, nextBagCount)
-    pushRecord(record)
-  }, [canCapture, value, nextBagCount, draft, pushRecord])
+    commitRecord(value)
+  }, [canCapture, value, commitRecord])
 
   const addManualRecord = useCallback((event) => {
     event.preventDefault()
@@ -152,9 +175,24 @@ export default function WeighScreen() {
 
   useSpaceToWeigh(capture, canCapture)
 
-  // Auto-capture: tự ghi 1 lần cân khi mẻ cân kết thúc (số tụt từ đỉnh đã ổn định).
-  // Chỉ bật ở chế độ auto, khi đang tạo phiếu mới và chưa lưu.
-  useAutoCapture({ value, stable, connected }, capture, isAuto && canCapture && !editingUuid)
+  // Auto-capture: trong mẻ, mỗi lần ổn định phát "ting" báo đã nhận; khi cân
+  // về 0 thì chốt 1 dòng (đỉnh của mẻ) xuống draft + BE. Chỉ bật ở chế độ auto,
+  // khi đang tạo phiếu mới và chưa lưu.
+  // Auto: trong mẻ, mỗi lần ổn định → hiện/ghi đè 1 dòng draft (80→160) + ting.
+  // Khi về 0 → xóa dòng active, thêm dòng chốt (giá trị nhỏ nhất cửa sổ) + đẩy
+  // BE; mẻ mới tạo dòng mới, không ghi đè.
+  useAutoCapture(
+    { value, stable, connected },
+    (peak) => {
+      const record = draft.commitActive(peak, nextBagCount)
+      pushRecord(record)
+    },
+    isAuto && connected && !editingUuid,
+    (peak) => {
+      draft.setActiveRecord(peak, nextBagCount)
+      ting()
+    },
+  )
 
   const handleSave = useCallback(async () => {
     if (draft.records.length === 0) {

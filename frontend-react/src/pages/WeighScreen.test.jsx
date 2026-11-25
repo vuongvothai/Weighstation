@@ -36,6 +36,9 @@ function renderScreen(path = '/tram-can') {
 describe('WeighScreen', () => {
   beforeEach(() => {
     localStorage.clear()
+    // Các test dưới đây thao tác theo chế độ thủ công (phím t); đặt manual để
+    // auto-capture không tự chèn dòng "đang cân" làm nhiễu.
+    localStorage.setItem('weighstation.captureMode.v1', 'manual')
     vi.clearAllMocks()
     insertRecord.mockResolvedValue({})
   })
@@ -51,16 +54,18 @@ describe('WeighScreen', () => {
   })
 
   it('hiển thị badge ổn định và số cân khi agent trả value', () => {
+    localStorage.removeItem('weighstation.captureMode.v1')
     useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
 
     renderScreen()
 
     expect(screen.getByText(/Ổn định/)).toBeTruthy()
     expect(screen.getByText(/Tự động ghi khi mẻ cân kết thúc/)).toBeTruthy()
-    expect(screen.getByText('124.5')).toBeTruthy()
+    expect(screen.getAllByText('124.5').length).toBeGreaterThan(0)
   })
 
   it('mặc định ở chế độ auto và chuyển sang thủ công bằng nút', async () => {
+    localStorage.removeItem('weighstation.captureMode.v1')
     useScaleWeight.mockReturnValue({ value: 124.5, stable: true, connected: true })
     const user = userEvent.setup()
 
@@ -438,6 +443,18 @@ describe('WeighScreen', () => {
     const [uuid, payload] = insertRecord.mock.calls[0]
     expect(typeof uuid).toBe('string')
     expect(payload.record).toMatchObject({ weighSequence: 1, bagCount: 1, weightKg: 85.5 })
+  })
+
+  it('auto: hiện 1 dòng ghi đè realtime khi ổn định, chốt khi về 0', async () => {
+    localStorage.removeItem('weighstation.captureMode.v1')
+    useScaleWeight.mockReturnValue({ value: 80, stable: true, connected: true })
+    insertRecord.mockResolvedValue({})
+
+    renderScreen()
+
+    // Ổn định ở 80 → hiện 1 dòng draft, chưa đẩy BE.
+    expect(await screen.findByLabelText(/Số bao lần 1/)).toBeTruthy()
+    expect(insertRecord).not.toHaveBeenCalled()
   })
 
   it('ẩn nút Lịch sử và Phiếu mới ở màn chỉnh sửa', async () => {

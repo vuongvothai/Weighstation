@@ -79,17 +79,73 @@ export function useTicketDraft() {
   }, [])
 
   const addRecord = useCallback((weightKg, bagCount = DEFAULT_BAG_COUNT) => {
-    // Tính record đồng bộ (không trong updater) để trả về ngay cho FE đẩy BE.
+    // Tính record đồng bộ từ ref (đã cập nhật atomic ở mọi thay đổi) để trả về
+    // ngay cho FE đẩy BE; setDraft chỉ append.
     const created = {
       weighSequence: draftRef.current.records.reduce((max, r) => Math.max(max, r.weighSequence), 0) + 1,
       bagCount,
       weightKg,
       weighedAt: new Date().toISOString(),
     }
-    setDraft((prev) => ({
-      ...prev,
-      records: [...prev.records, created],
-    }))
+    setDraft((p) => {
+      const next = { ...p, records: [...p.records, created] }
+      draftRef.current = next
+      return next
+    })
+    return created
+  }, [])
+
+  /**
+   * Hiện/ghi đè 1 dòng "đang cân" realtime trong mẻ (chưa về 0). Nếu đã có
+   * dòng active thì cập nhật đỉnh mới, chưa có thì tạo mới. Trả về record.
+   */
+  const setActiveRecord = useCallback((weightKg, bagCount = DEFAULT_BAG_COUNT) => {
+    const prev = draftRef.current
+    const active = prev.records.find((r) => r.activeDraft)
+    if (active) {
+      const updated = { ...active, weightKg, bagCount }
+      setDraft((p) => {
+        const next = {
+          ...p,
+          records: p.records.map((r) => (r.weighSequence === active.weighSequence ? updated : r)),
+        }
+        draftRef.current = next
+        return next
+      })
+      return updated
+    }
+    const created = {
+      weighSequence: prev.records.reduce((max, r) => Math.max(max, r.weighSequence), 0) + 1,
+      bagCount,
+      weightKg,
+      weighedAt: new Date().toISOString(),
+      activeDraft: true,
+    }
+    setDraft((p) => {
+      const next = { ...p, records: [...p.records, created] }
+      draftRef.current = next
+      return next
+    })
+    return created
+  }, [])
+
+  /**
+   * Chốt mẻ: xóa dòng active (nếu có) và thêm dòng chốt trong CÙNG một lần
+   * setDraft (atomic) — tránh race khiến sót dòng active làm nhảy weighSequence.
+   */
+  const commitActive = useCallback((weightKg, bagCount = DEFAULT_BAG_COUNT) => {
+    const kept = draftRef.current.records.filter((r) => !r.activeDraft)
+    const created = {
+      weighSequence: kept.reduce((max, r) => Math.max(max, r.weighSequence), 0) + 1,
+      bagCount,
+      weightKg,
+      weighedAt: new Date().toISOString(),
+    }
+    setDraft((p) => {
+      const next = { ...p, records: [...kept, created] }
+      draftRef.current = next
+      return next
+    })
     return created
   }, [])
 
@@ -139,6 +195,8 @@ export function useTicketDraft() {
     records: draft.records,
     setCustomerName,
     addRecord,
+    setActiveRecord,
+    commitActive,
     updateRecord,
     removeRecord,
     loadTicket,

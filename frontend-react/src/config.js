@@ -34,3 +34,9 @@ export const ZERO_THRESHOLD_KG = 0.2
 
 /** Số vòng poll liên tiếp phải thấy cân ở 0 trước khi reset peak. */
 export const ZERO_CONFIRM_POLLS = 3
+
+/**
+ * Cửa sổ lấy số cân auto: trong [đỉnh_ổn_định - 5, đỉnh_ổn_định], lấy giá trị
+ * ổn định nhỏ nhất. Giảm nhiễu và tránh ghi giá trị đỉnh "đè tay".
+ */
+export const AUTO_TARE_WINDOW_KG = 5

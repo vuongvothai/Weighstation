@@ -25,38 +25,78 @@ describe('useAutoCapture', () => {
     expect(onCapture).not.toHaveBeenCalled()
   })
 
-  it('ghi đỉnh khi số tụt từ đỉnh đã ổn định', () => {
+  it('chốt giá trị nhỏ nhất trong cửa sổ [đỉnh-5, đỉnh] khi về 0', () => {
     const onCapture = vi.fn()
     const { result, rerender } = renderHook(({ s }) => useAutoCapture(s, onCapture, true), {
       initialProps: { s: { value: 100, stable: false, connected: true } },
     })
 
-    // Hàng lên: số tăng dần, chưa ổn định.
-    push(rerender, { value: 120, stable: false, connected: true })
-    push(rerender, { value: 124.5, stable: false, connected: true })
-    // Đỉnh ổn định.
-    push(rerender, { value: 124.5, stable: true, connected: true })
-    expect(result.current.phase).toBe('peakStable')
-    // Hàng dỡ: số tụt nhưng chưa ổn định.
-    push(rerender, { value: 120, stable: false, connected: true })
+    // Ổn định: 158, 160 (đỉnh), 156 → cửa sổ [155,160], nhỏ nhất = 156.
+    push(rerender, { value: 158, stable: true, connected: true })
+    push(rerender, { value: 160, stable: true, connected: true })
+    push(rerender, { value: 156, stable: true, connected: true })
+    expect(result.current.phase).toBe('weighing')
     expect(onCapture).not.toHaveBeenCalled()
-    // Ổn định ở mức thấp hơn → ghi đỉnh 124.5.
-    push(rerender, { value: 120, stable: true, connected: true })
+    // Về 0 đủ nhịp → chốt 156.
+    push(rerender, { value: 0, stable: true, connected: true })
+    push(rerender, { value: 0, stable: true, connected: true })
+    push(rerender, { value: 0, stable: true, connected: true })
 
     expect(onCapture).toHaveBeenCalledTimes(1)
-    expect(onCapture).toHaveBeenCalledWith(124.5)
+    expect(onCapture).toHaveBeenCalledWith(156)
   })
 
-  it('không ghi khi đỉnh chưa từng ổn định', () => {
+  it('2 bao 1 lần: đỉnh ổn định 160, chốt 1 dòng ~160 khi về 0', () => {
     const onCapture = vi.fn()
     const { rerender } = renderHook(({ s }) => useAutoCapture(s, onCapture, true), {
-      initialProps: { s: { value: 100, stable: false, connected: true } },
+      initialProps: { s: { value: 80, stable: true, connected: true } },
     })
 
-    push(rerender, { value: 130, stable: false, connected: true })
-    push(rerender, { value: 125, stable: true, connected: true })
-
+    // Bao 2: đỉnh ổn định tăng lên 160 (cửa sổ dịch lên, min = 160).
+    push(rerender, { value: 160, stable: true, connected: true })
     expect(onCapture).not.toHaveBeenCalled()
+    push(rerender, { value: 0, stable: true, connected: true })
+    push(rerender, { value: 0, stable: true, connected: true })
+    push(rerender, { value: 0, stable: true, connected: true })
+
+    expect(onCapture).toHaveBeenCalledTimes(1)
+    expect(onCapture).toHaveBeenCalledWith(160)
+  })
+
+  it('báo onUpdate giá trị nhỏ nhất trong cửa sổ mỗi lần ổn định', () => {
+    const onCapture = vi.fn()
+    const onUpdate = vi.fn()
+    const { rerender } = renderHook(({ s }) => useAutoCapture(s, onCapture, true, onUpdate), {
+      initialProps: { s: { value: 160, stable: true, connected: true } },
+    })
+
+    push(rerender, { value: 156, stable: true, connected: true })
+
+    expect(onUpdate).toHaveBeenLastCalledWith(156)
+    expect(onCapture).not.toHaveBeenCalled()
+  })
+
+  it('3 mẻ liên tiếp: mỗi lần về 0 chốt 1 lần, không ghi đè', () => {
+    const onCapture = vi.fn()
+    const { rerender } = renderHook(({ s }) => useAutoCapture(s, onCapture, true), {
+      initialProps: { s: { value: 100, stable: true, connected: true } },
+    })
+
+    const zero = () => {
+      push(rerender, { value: 0, stable: true, connected: true })
+      push(rerender, { value: 0, stable: true, connected: true })
+      push(rerender, { value: 0, stable: true, connected: true })
+    }
+
+    push(rerender, { value: 160, stable: true, connected: true })
+    zero()
+    push(rerender, { value: 90, stable: true, connected: true })
+    zero()
+    push(rerender, { value: 120, stable: true, connected: true })
+    zero()
+
+    expect(onCapture).toHaveBeenCalledTimes(3)
+    expect(onCapture.mock.calls.map((c) => c[0])).toEqual([160, 90, 120])
   })
 
   it('tắt enabled thì reset và không ghi', () => {
@@ -67,7 +107,7 @@ describe('useAutoCapture', () => {
 
     push(rerender, { value: 124.5, stable: true, connected: true })
     act(() => {
-      rerender({ s: { value: 120, stable: true, connected: true }, on: false })
+      rerender({ s: { value: 0, stable: true, connected: true }, on: false })
     })
 
     expect(onCapture).not.toHaveBeenCalled()

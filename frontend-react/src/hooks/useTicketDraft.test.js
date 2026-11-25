@@ -95,6 +95,21 @@ describe('useTicketDraft', () => {
     expect(result.current.records).toHaveLength(1)
   })
 
+  it('2 mẻ auto (commitActive): về 0 chốt dòng, mẻ mới tạo dòng mới', () => {
+    const { result } = renderHook(() => useTicketDraft())
+
+    act(() => result.current.setActiveRecord(80, 1))
+    act(() => result.current.setActiveRecord(160, 1))
+    act(() => result.current.commitActive(160, 1))
+    act(() => result.current.setActiveRecord(90, 1))
+    act(() => result.current.setActiveRecord(180, 1))
+    act(() => result.current.commitActive(180, 1))
+
+    expect(result.current.records).toHaveLength(2)
+    expect(result.current.records[0]).toMatchObject({ weighSequence: 1, weightKg: 160 })
+    expect(result.current.records[1]).toMatchObject({ weighSequence: 2, weightKg: 180 })
+  })
+
   it('reset xoá trắng và sinh ticketUuid mới', () => {
     const { result } = renderHook(() => useTicketDraft())
     const firstUuid = result.current.ticketUuid
