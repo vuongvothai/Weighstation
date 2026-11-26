@@ -15,9 +15,9 @@
 ```mermaid
 flowchart TD
     CAN[Cân điện tử] -->|RS232| AGENT[Python Agent :5000]
-    AGENT -->|GET /weight 100ms| FE[React FE :5173]
+    AGENT -->|GET /weight 100ms| FE[React FE :5172]
     FE -->|giữ dữ liệu tạm| DRAFT[Dữ liệu tạm trên FE]
-    DRAFT -->|Nhấn Lưu| BE[Spring BE :8080]
+    DRAFT -->|Nhấn Lưu| BE[Spring BE :8079]
     BE -->|validate/tính toán| DB[(MySQL 8)]
     DB -->|in 1/3 A4| PRINTER[Máy in]
 ```

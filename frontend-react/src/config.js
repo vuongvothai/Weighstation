@@ -1,12 +1,12 @@
 /**
  * Cấu hình endpoint.
  *
- * Agent chạy ở `127.0.0.1:5000`, BE ở `:8080`. Khi FE chạy qua nginx thì
+ * Agent chạy ở `127.0.0.1:5000`, BE ở `:8079`. Khi FE chạy qua nginx thì
  * `/api` cùng origin nên `VITE_API_BASE_URL` để trống là đủ.
  */
 export const AGENT_BASE_URL = import.meta.env.VITE_AGENT_BASE_URL ?? 'http://127.0.0.1:5000'
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8079'
 
 /** Tần suất FE hỏi agent, khớp với `docs/01-architecture.md`. */
 export const POLL_INTERVAL_MS = 100

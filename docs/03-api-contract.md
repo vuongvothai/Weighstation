@@ -64,7 +64,7 @@ mật độ byte ASCII in được. Baud cho nhiều byte ASCII hợp lệ nhấ
 rệt) được chọn. Nhờ vậy cân cấu hình 1200 hay 9600 đều đọc được mà không cần
 cấu hình tay — miễn dữ liệu là ASCII. Dò không ra thì giữ `baudRate` cấu hình.
 
-## Backend nghiệp vụ — Spring Boot (`:8080/api`)
+## Backend nghiệp vụ — Spring Boot (`:8079/api`)
 
 ### `POST /api/tickets`
 
@@ -226,16 +226,16 @@ Xóa toàn bộ phiếu (dùng khi muốn làm lại từ đầu).
 
 ## CORS
 
-FE chạy ở `localhost:5173` (dev) hoặc `:5173` (nginx), BE ở `:8080` → khác origin. Cần cấu hình `WebMvcConfigurer` cho phép:
+FE chạy ở `localhost:5172` (dev) hoặc `:5172` (nginx), BE ở `:8079` → khác origin. Cần cấu hình `WebMvcConfigurer` cho phép:
 
-- `http://localhost:5173`, `http://127.0.0.1:5173`
-- `http://localhost:5173` qua nginx proxy (production) — cùng origin nên không cần CORS khi đi qua nginx.
+- `http://localhost:5172`, `http://127.0.0.1:5172`
+- `http://localhost:5172` qua nginx proxy (production) — cùng origin nên không cần CORS khi đi qua nginx.
 
 Agent ở `:5000` cũng cần CORS vì FE gọi trực tiếp `http://127.0.0.1:5000/weight`.
 
 ## Bảo mật — lưu ý MVP
 
-- Không có xác thực. Bất kỳ tiến trình nào trên máy đều gọi được `:8080/api`.
+- Không có xác thực. Bất kỳ tiến trình nào trên máy đều gọi được `:8079/api`.
 - Chấp nhận được vì máy trạm không nối Internet ở MVP.
 - Khi nào triển khai thật: thêm reverse proxy giới hạn theo IP, hoặc token tĩnh trong header.
 

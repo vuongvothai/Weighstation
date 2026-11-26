@@ -39,7 +39,7 @@ STABLE_READS_REQUIRED = 3
 READ_INTERVAL_S = 0.05
 
 # Chỉ cho frontend ở các origin này gọi API (tránh CORS chặn khi dev).
-ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
+ALLOWED_ORIGINS = ["http://localhost:5172", "http://127.0.0.1:5172"]
 
 # Một frame cân hợp lệ: "=" + 7 ký tự, trong đó 6 ký tự đầu là số, ký tự
 # cuối là chữ số hoặc dấu "-".

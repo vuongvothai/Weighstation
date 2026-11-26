@@ -5,7 +5,7 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * FE ở {@code localhost:5173} gọi trực tiếp BE ở {@code :8080} khi dev nên khác
+ * FE ở {@code localhost:5172} gọi trực tiếp BE ở {@code :8079} khi dev nên khác
  * origin. Khi chạy qua nginx thì FE và BE cùng origin, không cần CORS.
  */
 @Configuration
@@ -13,8 +13,8 @@ public class CorsConfig implements WebMvcConfigurer {
 
 	/** FE dev server (Vite) và bản nginx. */
 	private static final String[] ALLOWED_ORIGINS = {
-			"http://localhost:5173",
-			"http://127.0.0.1:5173" };
+			"http://localhost:5172",
+			"http://127.0.0.1:5172" };
 
 	@Override
 	public void addCorsMappings(CorsRegistry registry) {

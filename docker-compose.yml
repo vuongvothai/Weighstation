@@ -9,7 +9,7 @@ services:
       MYSQL_USER: vuongvo
       MYSQL_PASSWORD: "1234"
     ports:
-      - "3306:3306"
+      - "3305:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -28,12 +28,12 @@ services:
     container_name: weighstation-backend
     restart: unless-stopped
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/nong_san_db
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3305/nong_san_db
       SPRING_DATASOURCE_USERNAME: vuongvo
       SPRING_DATASOURCE_PASSWORD: "1234"
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
     ports:
-      - "8080:8080"
+      - "8079:8080"
     depends_on:
       mysql:
         condition: service_healthy
@@ -47,7 +47,7 @@ services:
     container_name: weighstation-frontend
     restart: unless-stopped
     ports:
-      - "5173:80"
+      - "5172:80"
     depends_on:
       - backend
     networks:

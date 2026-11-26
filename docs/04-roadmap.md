@@ -13,7 +13,7 @@
 
 ### Module: Controller
 - [x] `TicketController` — 4 endpoint theo [03-api-contract.md](./03-api-contract.md)
-- [x] `config/CorsConfig` — cho phép `http://localhost:5173`
+- [x] `config/CorsConfig` — cho phép `http://localhost:5172`
 
 ## Frontend
 
@@ -48,7 +48,7 @@
 - [x] `GET /health` — trạng thái kết nối cổng COM
 - [x] `GET /weight` — số cân mới nhất đã parse
 - [x] `POST /config` — đổi cổng COM / baud rate
-- [x] CORS cho `http://localhost:5173`
+- [x] CORS cho `http://localhost:5172`
 - [x] Xử lý `serial.SerialException` → trả `connected=false`, không crash
 
 ---
@@ -113,7 +113,7 @@ npm install
 npm run dev
 ```
 
-Mở `http://localhost:5173/tram-can`.
+Mở `http://localhost:5172/tram-can`.
 
 ### Lệnh kiểm thử
 
@@ -129,7 +129,7 @@ Mở `http://localhost:5173/tram-can`.
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
 | `VITE_AGENT_BASE_URL` | `http://127.0.0.1:5000` | URL agent |
-| `VITE_API_BASE_URL` | `http://localhost:8080` | URL BE; để trống khi chạy qua nginx |
+| `VITE_API_BASE_URL` | `http://localhost:8079` | URL BE; để trống khi chạy qua nginx |
 
 ### Ngoài phạm vi MVP (đã chốt trong `01-architecture.md`)
 
