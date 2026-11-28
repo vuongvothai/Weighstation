@@ -9,7 +9,7 @@ COPY . .
 RUN npm run build
 
 # ---- Run stage ----
-FROM nginx:alpine
+FROM nginx:latest
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

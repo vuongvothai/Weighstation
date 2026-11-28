@@ -28,7 +28,7 @@ services:
     container_name: weighstation-backend
     restart: unless-stopped
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3305/nong_san_db
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/nong_san_db
       SPRING_DATASOURCE_USERNAME: vuongvo
       SPRING_DATASOURCE_PASSWORD: "1234"
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
