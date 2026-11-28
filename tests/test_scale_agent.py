@@ -219,3 +219,40 @@ def test_config_can_disable_auto_detect(client):
     assert body["port"] == "COM4"
     assert body["baudRate"] == 9600
     assert body["autoDetect"] is False
+
+
+# ── ESP32 fallback ────────────────────────────────────────────────────────────
+
+def test_weight_forwards_to_esp32_when_disconnected(client, monkeypatch):
+    state = client.app.state.scale_state
+    state.reset_connection(False, "COM3 not found")
+
+    esp_payload = {"value": 12.5, "unit": "kg", "stable": True, "raw": "=00021.0", "ts": "2026-01-01T00:00:00+07:00"}
+    monkeypatch.setattr(scale_agent, "_fetch_from_esp32", lambda: esp_payload)
+
+    body = client.get("/weight").json()
+    assert body["value"] == 12.5
+    assert body["stable"] is True
+
+
+def test_weight_returns_null_when_esp32_unreachable(client, monkeypatch):
+    state = client.app.state.scale_state
+    state.reset_connection(False, "COM3 not found")
+    monkeypatch.setattr(scale_agent, "_fetch_from_esp32", lambda: None)
+
+    body = client.get("/weight").json()
+    assert body["value"] is None
+    assert body["stable"] is False
+
+
+def test_weight_skips_esp32_when_com_connected(client, monkeypatch):
+    state = client.app.state.scale_state
+    state.reset_connection(True)
+    for _ in range(3):
+        state.update("=00000.2")
+    called = {"n": 0}
+    monkeypatch.setattr(scale_agent, "_fetch_from_esp32", lambda: called.__setitem__("n", called["n"] + 1))
+
+    body = client.get("/weight").json()
+    assert body["value"] == 2.0
+    assert called["n"] == 0

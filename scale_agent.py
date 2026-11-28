@@ -14,6 +14,8 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import serial
 import uvicorn
@@ -40,6 +42,13 @@ READ_INTERVAL_S = 0.05
 
 # Chỉ cho frontend ở các origin này gọi API (tránh CORS chặn khi dev).
 ALLOWED_ORIGINS = ["http://localhost:5172", "http://127.0.0.1:5172"]
+
+# ── Fallback ESP32 ────────────────────────────────────────────────────────────
+# Khi không đọc được cổng COM (cân cắm vào ESP32 qua WiFi thay vì USB), agent
+# forward request sang ESP32. ESP32 phải trả cùng format JSON với /weight.
+# ESP32 chạy AP mode nên IP cố định là 192.168.4.1 (xem scale_reader.ino).
+ESP32_BASE_URL = "http://192.168.4.1"
+ESP32_TIMEOUT_S = 1.0
 
 # Một frame cân hợp lệ: "=" + 7 ký tự, trong đó 6 ký tự đầu là số, ký tự
 # cuối là chữ số hoặc dấu "-".
@@ -325,6 +334,19 @@ class ScaleReader:
 # create_app nhận cấu hình ban đầu và gắn reader/state vào app.state để test
 # hoặc caller khác truy cập được.
 
+
+def _fetch_from_esp32() -> Optional[dict]:
+    """Gọi GET /weight trên ESP32; trả JSON nếu thành công, None nếu lỗi."""
+    try:
+        with urlopen(f"{ESP32_BASE_URL}/weight", timeout=ESP32_TIMEOUT_S) as resp:
+            if resp.status == 200:
+                import json
+                return json.loads(resp.read().decode("utf-8"))
+    except (URLError, OSError, ValueError):
+        pass
+    return None
+
+
 class ConfigRequest(BaseModel):
     port: str = Field(min_length=1, max_length=32)
     baud_rate: int = Field(default=DEFAULT_BAUD_RATE, ge=300, le=256000, alias="baudRate")
@@ -362,6 +384,11 @@ def create_app(
 
     @app.get("/weight")
     def weight() -> dict:
+        # Nếu COM không kết nối, thử forward sang ESP32 trước khi trả null.
+        if not state.connected:
+            forwarded = _fetch_from_esp32()
+            if forwarded is not None:
+                return forwarded
         return state.weight()
 
     @app.post("/config")
